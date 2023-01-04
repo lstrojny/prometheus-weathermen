@@ -8,6 +8,11 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = import nixpkgs { system = system; };
-      in { devShell = pkgs.mkShell { packages = [ pkgs.cargo pkgs.rustc ]; }; });
+      let
+        pkgs = import nixpkgs { system = system; };
+        rust-toolchain = pkgs.symlinkJoin {
+          name = "rust-toolchain";
+          paths = [ pkgs.rustc pkgs.cargo pkgs.rustfmt pkgs.rustPlatform.rustcSrc ];
+        };
+      in { devShell = pkgs.mkShell { packages = [ rust-toolchain ]; }; });
 }
