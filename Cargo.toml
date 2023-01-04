@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 rocket = "0.5.0-rc.2"
+opentelemetry = "0.18.0"
+opentelemetry-prometheus = "0.11.0"
+prometheus = "0.13.3"
