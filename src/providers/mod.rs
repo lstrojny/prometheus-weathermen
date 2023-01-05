@@ -38,6 +38,7 @@ impl IntoIterator for Providers {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Coordinate(f32);
 impl Display for Coordinate {
+    // Standardize 7 digits for coordinates and that should be plenty
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.7}", self.0)
     }
@@ -45,7 +46,9 @@ impl Display for Coordinate {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Coordinates {
+    #[serde(alias = "lat")]
     latitude: Coordinate,
+    #[serde(alias = "lon")]
     longitude: Coordinate,
 }
 impl Coordinates {
@@ -73,11 +76,11 @@ pub struct Weather {
 }
 
 #[derive(Debug)]
-pub struct WeatherRequest {
+pub struct WeatherRequest<T> {
     pub name: String,
-    pub coordinates: Coordinates,
+    pub query: T,
 }
 
 pub trait WeatherProvider: std::fmt::Debug {
-    fn for_coordinates(&self, request: WeatherRequest) -> Result<Weather, String>;
+    fn for_coordinates(&self, request: WeatherRequest<Coordinates>) -> Result<Weather, String>;
 }

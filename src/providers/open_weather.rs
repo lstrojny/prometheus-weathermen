@@ -1,8 +1,11 @@
 use crate::providers::units::{Kelvin, ToCelsius};
-use crate::providers::{Coordinate, Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
 use std::string::ToString;
+
+const SOURCE_URI: &str = "org.openweathermap";
+const ENDPOINT_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct OpenWeather {
@@ -15,28 +18,20 @@ struct OpenWeatherResponseMain {
 }
 
 #[derive(Deserialize)]
-struct OpenWeatherResponseCoord {
-    lat: Coordinate,
-    lon: Coordinate,
-}
-
-#[derive(Deserialize)]
 struct OpenWeatherResponse {
-    coord: OpenWeatherResponseCoord,
+    coord: Coordinates,
     name: String,
     main: OpenWeatherResponseMain,
 }
 
-const SOURCE_URI: &str = "org.openweathermap";
-
 impl WeatherProvider for OpenWeather {
-    fn for_coordinates(&self, request: WeatherRequest) -> Result<Weather, String> {
+    fn for_coordinates(&self, request: WeatherRequest<Coordinates>) -> Result<Weather, String> {
         println!("OpenWeather for_coordinates start {request:?}");
         let url = match Url::parse_with_params(
-            "https://api.openweathermap.org/data/2.5/weather",
+            ENDPOINT_URL,
             &[
-                ("lat", request.coordinates.get_latitude().to_string()),
-                ("lon", request.coordinates.get_longitude().to_string()),
+                ("lat", request.query.get_latitude().to_string()),
+                ("lon", request.query.get_longitude().to_string()),
                 ("appid", self.api_key.to_owned()),
             ],
         ) {
@@ -61,7 +56,7 @@ impl WeatherProvider for OpenWeather {
             location: request.name,
             city: response.name,
             temperature: response.main.temp.to_celsius(),
-            coordinates: Coordinates::new(response.coord.lat, response.coord.lon),
+            coordinates: response.coord,
         })
     }
 }

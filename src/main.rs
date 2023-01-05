@@ -29,7 +29,7 @@ async fn index(config: &State<Config>) -> String {
             tasks.spawn(task::spawn_blocking(move || {
                 configured_provider_for_task.for_coordinates(WeatherRequest {
                     name: location.name.unwrap_or(name),
-                    coordinates: location.coordinates,
+                    query: location.coordinates,
                 })
             }));
         }
