@@ -1,6 +1,8 @@
 use crate::provider::units::Celsius;
+use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
+#[derive(Deserialize)]
 pub struct Coordinate(f32);
 impl Coordinate {
     pub fn new(coordinate: f32) -> Self {
@@ -45,10 +47,11 @@ impl Clone for Coordinates {
 impl Copy for Coordinates {}
 
 pub struct Weather {
+    pub city: String,
     pub temperature: Celsius,
     pub coordinates: Coordinates,
 }
 
 pub trait WeatherProvider {
-    fn for_coordinates(&self, coordinates: Coordinates) -> Weather;
+    fn for_coordinates(&self, coordinates: Coordinates) -> Result<Weather, String>;
 }
