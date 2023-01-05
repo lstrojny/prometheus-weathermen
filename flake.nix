@@ -14,13 +14,14 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        rust-toolchain = pkgs.symlinkJoin {
-          name = "rust-toolchain";
-          paths = [ pkgs.rust-bin.nightly.latest.default ];
-        };
+        nightly = pkgs.rust-bin.selectLatestNightlyWith (toolchain:
+          toolchain.default.override {
+            extensions = [ "rust-src" "rust-analyzer" "rust-std" ];
+            targets = [ "aarch64-apple-darwin" "x86_64-unknown-linux-gnu" ];
+          });
       in {
         devShell = pkgs.mkShell {
-          packages = [ rust-toolchain pkgs.darwin.apple_sdk.frameworks.Security pkgs.pkgconfig pkgs.openssl ];
+          packages = [ nightly pkgs.darwin.apple_sdk.frameworks.Security pkgs.openssl pkgs.pkgconfig ];
         };
       });
 }
