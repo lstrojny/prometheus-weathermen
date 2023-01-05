@@ -1,39 +1,55 @@
+extern crate core;
+
+use crate::config::parse;
 use crate::prometheus::prometheus_metrics;
 use rocket::tokio::task;
+use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes};
-use std::env;
 
+mod config;
 mod prometheus;
 mod provider;
-use crate::provider::open_weather::OpenWeather;
-use crate::provider::provider::{Coordinate, Coordinates, WeatherProvider};
 
 #[get("/")]
 async fn index() -> String {
-    let coordinates = Coordinates::new(
-        Coordinate::new(48.137154_f32),
-        Coordinate::new(11.576124_f32),
-    );
-
-    let api_key = match env::var("OPENWEATHER_API_KEY").ok() {
-        Some(string) => string,
-        None => return "# No API key given".to_owned(),
+    let config = match parse() {
+        Ok(config) => config,
+        Err(err) => panic!("{}", err),
     };
 
-    let provider = OpenWeather { api_key };
+    println!("{:?}", config);
 
-    let provide_handle =
-        task::spawn_blocking(move || provider.for_coordinates(coordinates.to_owned()));
-
-    let weather = match provide_handle.await {
-        Ok(weather) => match weather {
-            Ok(weather) => weather,
-            Err(err) => return format!("# {}", err),
-        },
-        Err(err) => return err.to_string().to_owned(),
+    let provider = match config.provider {
+        Some(provider) => provider,
+        None => return "# No provider defined".to_owned(),
     };
 
-    return prometheus_metrics(weather);
+    let mut set = JoinSet::new();
+    for p in provider.to_owned() {
+        for (name, location) in config.location.to_owned() {
+            let prov = p.clone();
+            set.spawn(task::spawn_blocking(move || {
+                prov.for_coordinates(location.coordinates)
+            }));
+        }
+    }
+
+    let mut metrics = vec![];
+
+    while let Some(result) = set.join_next().await {
+        match result {
+            Ok(result) => match result {
+                Ok(result) => match result {
+                    Ok(result) => metrics.push(prometheus_metrics(result)),
+                    Err(e) => println!("Error {:?}", e),
+                },
+                Err(e) => println!("Error {:?}", e),
+            },
+            Err(e) => println!("Error {:?}", e),
+        }
+    }
+
+    return metrics.join("\n");
 }
 
 #[launch]

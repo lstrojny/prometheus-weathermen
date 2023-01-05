@@ -1097,6 +1097,7 @@ dependencies = [
  "reqwest",
  "rocket",
  "serde",
+ "toml",
 ]
 
 [[package]]

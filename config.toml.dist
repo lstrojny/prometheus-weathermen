@@ -1,0 +1,11 @@
+[location.home]
+latitude = 52.508963
+longitude = 13.435965
+
+[location.work]
+name = "Work place" # Optional, defaults to the ID of the location
+latitude = 53.508963
+longitude = 14.435965
+
+[provider.open_weather]
+api_key = "XXXXX"

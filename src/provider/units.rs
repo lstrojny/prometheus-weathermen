@@ -1,13 +1,18 @@
 use serde::Deserialize;
-use std::ops::Deref;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Kelvin(f32);
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Celsius(f32);
 
-#[derive(Deserialize)]
+impl Celsius {
+    pub(crate) fn to_f32(&self) -> f32 {
+        self.0
+    }
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Fahrenheit(f32);
 
 pub trait ToCelsius {
@@ -21,38 +26,14 @@ impl ToCelsius for Kelvin {
     }
 }
 
-impl Deref for Kelvin {
-    type Target = f32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl ToCelsius for Fahrenheit {
     fn to_celsius(&self) -> Celsius {
         Celsius(((self.0 - 32_f32) * 5_f32) / 9_f32)
     }
 }
 
-impl Deref for Fahrenheit {
-    type Target = f32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl ToCelsius for Celsius {
     fn to_celsius(&self) -> Celsius {
         Celsius(self.0)
-    }
-}
-
-impl Deref for Celsius {
-    type Target = f32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }

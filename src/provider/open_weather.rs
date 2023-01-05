@@ -3,6 +3,7 @@ use crate::provider::units::{Kelvin, ToCelsius};
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
 
+#[derive(Deserialize, Debug, Clone)]
 pub struct OpenWeather {
     pub api_key: String,
 }
@@ -27,12 +28,13 @@ struct OpenWeatherResponse {
 
 impl WeatherProvider for OpenWeather {
     fn for_coordinates(&self, coordinates: Coordinates) -> Result<Weather, String> {
+        println!("OpenWeather for_coordinates start {:?}", coordinates);
         let url = match Url::parse_with_params(
             "https://api.openweathermap.org/data/2.5/weather",
             &[
                 ("lat", coordinates.get_latitude().to_string()),
                 ("lon", coordinates.get_longitude().to_string()),
-                ("appid", self.api_key.clone()),
+                ("appid", self.api_key.to_owned()),
             ],
         ) {
             Ok(url) => url,
@@ -50,14 +52,11 @@ impl WeatherProvider for OpenWeather {
             Err(err) => return Err(err.to_string()),
         };
 
+        println!("OpenWeather for_coordinates end {:?}", coordinates);
         return Ok(Weather {
             city: response.name,
             temperature: response.main.temp.to_celsius(),
             coordinates: Coordinates::new(response.coord.lat, response.coord.lon),
         });
-
-        // ?lat=48.137154&lon=11.576124&appid=
-
-        /*println!("{}", body);*/
     }
 }

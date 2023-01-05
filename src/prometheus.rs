@@ -6,6 +6,8 @@ use opentelemetry::{global, Context, KeyValue};
 use prometheus::TextEncoder;
 
 pub fn prometheus_metrics(weather: Weather) -> String {
+    println!("prometheus_metrics() {:?}", weather);
+
     let controller = controllers::basic(processors::factory(
         selectors::simple::inexpensive(),
         aggregation::stateless_temporality_selector(),
@@ -26,7 +28,7 @@ pub fn prometheus_metrics(weather: Weather) -> String {
     let cx = Context::current();
     temperature.add(
         &cx,
-        *weather.temperature as f64,
+        weather.temperature.to_f32() as f64,
         &[
             KeyValue::new("city", weather.city),
             KeyValue::new("latitude", weather.coordinates.get_latitude().to_string()),
