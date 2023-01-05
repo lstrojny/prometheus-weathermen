@@ -1,12 +1,15 @@
-use opentelemetry::metrics::Meter;
 use opentelemetry::sdk::export::metrics::aggregation;
 use opentelemetry::sdk::metrics::{controllers, processors, selectors};
 use opentelemetry::sdk::Resource;
-use opentelemetry::trace::FutureExt;
 use opentelemetry::{global, Context, KeyValue};
-use opentelemetry_prometheus::PrometheusExporter;
 use prometheus::{Encoder, TextEncoder};
+use rocket::tokio::task;
 use rocket::{get, launch, routes};
+use std::env;
+
+mod provider;
+use crate::provider::open_weather::OpenWeather;
+use crate::provider::provider::{Coordinate, Coordinates, WeatherProvider};
 
 #[get("/")]
 async fn index() -> String {
@@ -28,12 +31,26 @@ async fn index() -> String {
         .with_description("Temperature in celsius")
         .init();
 
+    let coordinates = Coordinates::new(
+        Coordinate::new(48.137154_f32),
+        Coordinate::new(11.576124_f32),
+    );
+
+    let provider = OpenWeather {
+        api_key: env::var("OPENWEATHER_API_KEY").ok().unwrap(),
+    };
+
+    let new_coordinates = coordinates.clone();
+    let weather = task::spawn_blocking(move || provider.for_coordinates(new_coordinates))
+        .await
+        .unwrap();
+
     temperature.add(
         &cx,
-        22.9_f64,
+        *weather.temperature as f64,
         &[
-            KeyValue::new("latitude", format!("{:.7}", 48.137154_f64)),
-            KeyValue::new("longitude", format!("{:.7}", 11.576124_f64)),
+            KeyValue::new("latitude", coordinates.clone().get_latitude().to_string()),
+            KeyValue::new("longitude", coordinates.clone().get_longitude().to_string()),
         ],
     );
 
