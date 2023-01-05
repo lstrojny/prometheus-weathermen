@@ -9,3 +9,6 @@ longitude = 14.435965
 
 [provider.open_weather]
 api_key = "XXXXX"
+
+[provider.meteoblue]
+api_key = "XXX"

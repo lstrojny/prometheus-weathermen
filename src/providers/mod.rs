@@ -1,6 +1,8 @@
+mod meteoblue;
 pub mod open_weather;
 mod units;
 
+use crate::providers::meteoblue::Meteoblue;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::units::Celsius;
 use serde::Deserialize;
@@ -11,6 +13,7 @@ use std::vec::IntoIter;
 #[derive(Deserialize, Debug, Clone)]
 pub struct Providers {
     open_weather: Option<OpenWeather>,
+    meteoblue: Option<Meteoblue>,
 }
 
 impl IntoIterator for Providers {
@@ -19,8 +22,13 @@ impl IntoIterator for Providers {
 
     fn into_iter(self) -> Self::IntoIter {
         let mut vec: Vec<Arc<dyn WeatherProvider + Send + Sync>> = vec![];
+
         if self.open_weather.is_some() {
             vec.push(Arc::new(self.open_weather.unwrap()));
+        }
+
+        if self.meteoblue.is_some() {
+            vec.push(Arc::new(self.meteoblue.unwrap()));
         }
 
         IntoIter::into_iter(vec.into_iter())
@@ -70,6 +78,6 @@ pub struct WeatherRequest {
     pub coordinates: Coordinates,
 }
 
-pub trait WeatherProvider {
+pub trait WeatherProvider: std::fmt::Debug {
     fn for_coordinates(&self, request: WeatherRequest) -> Result<Weather, String>;
 }

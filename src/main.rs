@@ -21,7 +21,8 @@ async fn index(config: &State<Config>) -> String {
 
     let mut tasks = JoinSet::new();
 
-    for configured_provider in configured_providers {
+    for configured_provider in configured_providers.into_iter() {
+        println!("Found configured provider {configured_provider:?}");
         let locations = config.locations.clone();
         for (name, location) in locations {
             let configured_provider_for_task = configured_provider.clone();
