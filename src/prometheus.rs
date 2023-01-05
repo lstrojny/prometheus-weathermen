@@ -30,6 +30,8 @@ pub fn prometheus_metrics(weather: Weather) -> String {
         &cx,
         weather.temperature.to_f32() as f64,
         &[
+            KeyValue::new("source", weather.source),
+            KeyValue::new("location", weather.location),
             KeyValue::new("city", weather.city),
             KeyValue::new("latitude", weather.coordinates.get_latitude().to_string()),
             KeyValue::new("longitude", weather.coordinates.get_longitude().to_string()),

@@ -2,6 +2,7 @@ extern crate core;
 
 use crate::config::parse;
 use crate::prometheus::prometheus_metrics;
+use crate::provider::WeatherRequest;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes};
@@ -30,7 +31,10 @@ async fn index() -> String {
         for (name, location) in locations {
             let task_provider = p.clone();
             set.spawn(task::spawn_blocking(move || {
-                task_provider.for_coordinates(location.coordinates)
+                task_provider.for_coordinates(WeatherRequest {
+                    name: location.name.unwrap_or(name),
+                    coordinates: location.coordinates,
+                })
             }));
         }
     }

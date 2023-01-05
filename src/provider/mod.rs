@@ -57,11 +57,19 @@ impl Coordinates {
 
 #[derive(Debug)]
 pub struct Weather {
+    pub location: String,
+    pub source: String,
     pub city: String,
     pub temperature: Celsius,
     pub coordinates: Coordinates,
 }
 
+#[derive(Debug)]
+pub struct WeatherRequest {
+    pub name: String,
+    pub coordinates: Coordinates,
+}
+
 pub trait WeatherProvider {
-    fn for_coordinates(&self, coordinates: Coordinates) -> Result<Weather, String>;
+    fn for_coordinates(&self, request: WeatherRequest) -> Result<Weather, String>;
 }

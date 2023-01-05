@@ -1,7 +1,8 @@
 use crate::provider::units::{Kelvin, ToCelsius};
-use crate::provider::{Coordinate, Coordinates, Weather, WeatherProvider};
+use crate::provider::{Coordinate, Coordinates, Weather, WeatherProvider, WeatherRequest};
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
+use std::string::ToString;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct OpenWeather {
@@ -26,14 +27,16 @@ struct OpenWeatherResponse {
     main: OpenWeatherResponseMain,
 }
 
+const SOURCE_URI: &str = "org.openweathermap";
+
 impl WeatherProvider for OpenWeather {
-    fn for_coordinates(&self, coordinates: Coordinates) -> Result<Weather, String> {
-        println!("OpenWeather for_coordinates start {coordinates:?}");
+    fn for_coordinates(&self, request: WeatherRequest) -> Result<Weather, String> {
+        println!("OpenWeather for_coordinates start {request:?}");
         let url = match Url::parse_with_params(
             "https://api.openweathermap.org/data/2.5/weather",
             &[
-                ("lat", coordinates.get_latitude().to_string()),
-                ("lon", coordinates.get_longitude().to_string()),
+                ("lat", request.coordinates.get_latitude().to_string()),
+                ("lon", request.coordinates.get_longitude().to_string()),
                 ("appid", self.api_key.to_owned()),
             ],
         ) {
@@ -52,8 +55,10 @@ impl WeatherProvider for OpenWeather {
             Err(err) => return Err(err.to_string()),
         };
 
-        println!("OpenWeather for_coordinates end {coordinates:?}");
+        println!("OpenWeather for_coordinates end {request:?}");
         Ok(Weather {
+            source: SOURCE_URI.to_string(),
+            location: request.name,
             city: response.name,
             temperature: response.main.temp.to_celsius(),
             coordinates: Coordinates::new(response.coord.lat, response.coord.lon),
