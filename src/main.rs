@@ -17,7 +17,7 @@ async fn index() -> String {
         Err(err) => panic!("{}", err),
     };
 
-    println!("{:?}", config);
+    println!("Config dump {config:?}");
 
     let provider = match config.provider {
         Some(provider) => provider,
@@ -25,11 +25,12 @@ async fn index() -> String {
     };
 
     let mut set = JoinSet::new();
-    for p in provider.to_owned() {
-        for (name, location) in config.location.to_owned() {
-            let prov = p.clone();
+    for p in provider {
+        let locations = config.location.to_owned();
+        for (name, location) in locations {
+            let task_provider = p.clone();
             set.spawn(task::spawn_blocking(move || {
-                prov.for_coordinates(location.coordinates)
+                task_provider.for_coordinates(location.coordinates)
             }));
         }
     }
@@ -41,15 +42,15 @@ async fn index() -> String {
             Ok(result) => match result {
                 Ok(result) => match result {
                     Ok(result) => metrics.push(prometheus_metrics(result)),
-                    Err(e) => println!("Error {:?}", e),
+                    Err(e) => println!("Error {e:?}"),
                 },
-                Err(e) => println!("Error {:?}", e),
+                Err(e) => println!("Error {e:?}"),
             },
-            Err(e) => println!("Error {:?}", e),
+            Err(e) => println!("Error {e:?}"),
         }
     }
 
-    return metrics.join("\n");
+    metrics.join("\n")
 }
 
 #[launch]

@@ -1,4 +1,4 @@
-use crate::provider::provider::{Coordinates, Provider};
+use crate::provider::{Coordinates, Provider};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -18,5 +18,5 @@ pub struct Config {
 
 pub fn parse() -> Result<Config, toml::de::Error> {
     let contents = fs::read_to_string("config.toml.dist").expect("Read error");
-    toml::from_str(&*contents)
+    toml::from_str(&contents)
 }

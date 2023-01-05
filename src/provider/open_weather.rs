@@ -1,5 +1,5 @@
-use crate::provider::provider::{Coordinate, Coordinates, Weather, WeatherProvider};
 use crate::provider::units::{Kelvin, ToCelsius};
+use crate::provider::{Coordinate, Coordinates, Weather, WeatherProvider};
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
 
@@ -28,7 +28,7 @@ struct OpenWeatherResponse {
 
 impl WeatherProvider for OpenWeather {
     fn for_coordinates(&self, coordinates: Coordinates) -> Result<Weather, String> {
-        println!("OpenWeather for_coordinates start {:?}", coordinates);
+        println!("OpenWeather for_coordinates start {coordinates:?}");
         let url = match Url::parse_with_params(
             "https://api.openweathermap.org/data/2.5/weather",
             &[
@@ -52,11 +52,11 @@ impl WeatherProvider for OpenWeather {
             Err(err) => return Err(err.to_string()),
         };
 
-        println!("OpenWeather for_coordinates end {:?}", coordinates);
-        return Ok(Weather {
+        println!("OpenWeather for_coordinates end {coordinates:?}");
+        Ok(Weather {
             city: response.name,
             temperature: response.main.temp.to_celsius(),
             coordinates: Coordinates::new(response.coord.lat, response.coord.lon),
-        });
+        })
     }
 }

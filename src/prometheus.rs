@@ -1,4 +1,4 @@
-use crate::provider::provider::Weather;
+use crate::provider::Weather;
 use opentelemetry::sdk::export::metrics::aggregation;
 use opentelemetry::sdk::metrics::{controllers, processors, selectors};
 use opentelemetry::sdk::Resource;
@@ -6,7 +6,7 @@ use opentelemetry::{global, Context, KeyValue};
 use prometheus::TextEncoder;
 
 pub fn prometheus_metrics(weather: Weather) -> String {
-    println!("prometheus_metrics() {:?}", weather);
+    println!("prometheus_metrics() {weather:?}");
 
     let controller = controllers::basic(processors::factory(
         selectors::simple::inexpensive(),
