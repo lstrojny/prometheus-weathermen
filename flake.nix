@@ -16,7 +16,7 @@
         pkgs = import nixpkgs { inherit system overlays; };
         rust-toolchain = pkgs.symlinkJoin {
           name = "rust-toolchain";
-          paths = [ pkgs.rust-bin.beta.latest.default ];
+          paths = [ pkgs.rust-bin.nightly.latest.default ];
         };
       in {
         devShell = pkgs.mkShell {

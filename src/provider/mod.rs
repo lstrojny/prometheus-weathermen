@@ -9,11 +9,11 @@ use std::sync::Arc;
 use std::vec::IntoIter;
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Provider {
+pub struct Providers {
     open_weather: Option<OpenWeather>,
 }
 
-impl IntoIterator for Provider {
+impl IntoIterator for Providers {
     type Item = Arc<dyn WeatherProvider + Send + Sync>;
     type IntoIter = IntoIter<Arc<dyn WeatherProvider + Send + Sync>>;
 
@@ -27,7 +27,7 @@ impl IntoIterator for Provider {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Coordinate(f32);
 impl Display for Coordinate {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -35,7 +35,7 @@ impl Display for Coordinate {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Coordinates {
     latitude: Coordinate,
     longitude: Coordinate,
@@ -48,10 +48,10 @@ impl Coordinates {
         }
     }
     pub fn get_latitude(&self) -> Coordinate {
-        self.latitude
+        self.latitude.clone()
     }
     pub fn get_longitude(&self) -> Coordinate {
-        self.longitude
+        self.longitude.clone()
     }
 }
 

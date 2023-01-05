@@ -1,3 +1,4 @@
+use crate::config::{NAME, VERSION};
 use crate::provider::Weather;
 use opentelemetry::sdk::export::metrics::aggregation;
 use opentelemetry::sdk::metrics::{controllers, processors, selectors};
@@ -12,13 +13,13 @@ pub fn prometheus_metrics(weather: Weather) -> String {
         selectors::simple::inexpensive(),
         aggregation::stateless_temporality_selector(),
     ))
-    .with_resource(Resource::new(vec![KeyValue::new(
-        "service.name",
-        "prometheus-weather-exporter",
-    )]))
+    .with_resource(Resource::new(vec![
+        KeyValue::new("service.name", NAME),
+        KeyValue::new("service.version", VERSION),
+    ]))
     .build();
     let exporter = opentelemetry_prometheus::exporter(controller).init();
-    let meter = global::meter("foo.com/prometheus-weather-exporter");
+    let meter = global::meter(NAME);
 
     let temperature = meter
         .f64_up_down_counter("weather_temperature_celsius")

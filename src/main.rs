@@ -1,37 +1,32 @@
+#![feature(absolute_path)]
 extern crate core;
 
-use crate::config::parse;
+use crate::config::{parse, Config};
 use crate::prometheus::prometheus_metrics;
 use crate::provider::WeatherRequest;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
-use rocket::{get, launch, routes};
+use rocket::{get, launch, routes, State};
 
 mod config;
 mod prometheus;
 mod provider;
 
 #[get("/")]
-async fn index() -> String {
-    let config = match parse() {
-        Ok(config) => config,
-        Err(err) => panic!("{}", err),
-    };
-
-    println!("Config dump {config:?}");
-
-    let provider = match config.provider {
-        Some(provider) => provider,
+async fn index(config: &State<Config>) -> String {
+    let configured_providers = match config.providers.clone() {
+        Some(providers) => providers,
         None => return "# No provider defined".to_owned(),
     };
 
-    let mut set = JoinSet::new();
-    for p in provider {
-        let locations = config.location.to_owned();
+    let mut tasks = JoinSet::new();
+
+    for configured_provider in configured_providers {
+        let locations = config.locations.clone();
         for (name, location) in locations {
-            let task_provider = p.clone();
-            set.spawn(task::spawn_blocking(move || {
-                task_provider.for_coordinates(WeatherRequest {
+            let configured_provider_for_task = configured_provider.clone();
+            tasks.spawn(task::spawn_blocking(move || {
+                configured_provider_for_task.for_coordinates(WeatherRequest {
                     name: location.name.unwrap_or(name),
                     coordinates: location.coordinates,
                 })
@@ -41,7 +36,7 @@ async fn index() -> String {
 
     let mut metrics = vec![];
 
-    while let Some(result) = set.join_next().await {
+    while let Some(result) = tasks.join_next().await {
         match result {
             Ok(result) => match result {
                 Ok(result) => match result {
@@ -59,5 +54,11 @@ async fn index() -> String {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+    let config = match parse() {
+        Ok(config) => config,
+        Err(err) => panic!("{}", err),
+    };
+    println!("Config dump {config:?}");
+
+    rocket::build().manage(config).mount("/", routes![index])
 }
