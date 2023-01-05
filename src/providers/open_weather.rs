@@ -1,5 +1,5 @@
-use crate::provider::units::{Kelvin, ToCelsius};
-use crate::provider::{Coordinate, Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::units::{Kelvin, ToCelsius};
+use crate::providers::{Coordinate, Coordinates, Weather, WeatherProvider, WeatherRequest};
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
 use std::string::ToString;

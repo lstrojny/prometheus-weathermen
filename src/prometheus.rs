@@ -1,5 +1,5 @@
 use crate::config::{NAME, VERSION};
-use crate::provider::Weather;
+use crate::providers::Weather;
 use opentelemetry::sdk::export::metrics::aggregation;
 use opentelemetry::sdk::metrics::{controllers, processors, selectors};
 use opentelemetry::sdk::Resource;

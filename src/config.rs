@@ -1,4 +1,4 @@
-use crate::provider::{Coordinates, Providers};
+use crate::providers::{Coordinates, Providers};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::HashMap;

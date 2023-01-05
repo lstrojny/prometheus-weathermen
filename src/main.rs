@@ -3,20 +3,20 @@ extern crate core;
 
 use crate::config::{parse, Config};
 use crate::prometheus::prometheus_metrics;
-use crate::provider::WeatherRequest;
+use crate::providers::WeatherRequest;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
 
 mod config;
 mod prometheus;
-mod provider;
+mod providers;
 
 #[get("/")]
 async fn index(config: &State<Config>) -> String {
     let configured_providers = match config.providers.clone() {
         Some(providers) => providers,
-        None => return "# No provider defined".to_owned(),
+        None => return "# No providers defined".to_owned(),
     };
 
     let mut tasks = JoinSet::new();

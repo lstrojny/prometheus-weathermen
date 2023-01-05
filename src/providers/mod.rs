@@ -1,8 +1,8 @@
 pub mod open_weather;
 mod units;
 
-use crate::provider::open_weather::OpenWeather;
-use crate::provider::units::Celsius;
+use crate::providers::open_weather::OpenWeather;
+use crate::providers::units::Celsius;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
