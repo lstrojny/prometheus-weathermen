@@ -1,12 +1,13 @@
 use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, warn};
 use moka::sync::Cache;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{fs, path};
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -71,10 +72,17 @@ pub fn get_provider_tasks() -> anyhow::Result<ProviderTasks> {
 
     for configured_provider in configured_providers.into_iter() {
         let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
-            .time_to_live(configured_provider.cache_lifetime())
+            .time_to_live(configured_provider.refresh_interval())
             .build();
 
         debug!("Using configured provider {configured_provider:?}");
+
+        if configured_provider.refresh_interval() < Duration::from_secs(60 * 5) {
+            warn!(
+                "Updating weather information more often than every 5 minutes is discouraged. Consider increasing the refresh interval for {:?}", 
+                configured_provider.id()
+            );
+        }
 
         let locations = config.locations.clone();
         for (name, location) in locations {

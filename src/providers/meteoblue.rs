@@ -95,7 +95,7 @@ impl WeatherProvider for Meteoblue {
         })
     }
 
-    fn cache_lifetime(&self) -> Duration {
+    fn refresh_interval(&self) -> Duration {
         self.cache.refresh_interval
     }
 }

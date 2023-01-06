@@ -79,5 +79,5 @@ pub trait WeatherProvider: std::fmt::Debug {
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather>;
 
-    fn cache_lifetime(&self) -> Duration;
+    fn refresh_interval(&self) -> Duration;
 }

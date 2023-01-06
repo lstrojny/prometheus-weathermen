@@ -4,6 +4,8 @@ extern crate core;
 use crate::config::{get_provider_tasks, ProviderTasks};
 use crate::prometheus::prometheus_metrics;
 use crate::providers::Weather;
+use clap::Parser;
+use clap_verbosity_flag::WarnLevel;
 use log::{error, info};
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
@@ -52,11 +54,20 @@ async fn wait_for_metrics(
     Ok(metrics.join("\n"))
 }
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[clap(flatten)]
+    verbose: clap_verbosity_flag::Verbosity<WarnLevel>,
+}
+
 #[launch]
 fn rocket() -> _ {
+    let args = Args::parse();
+
     stderrlog::new()
         .module(module_path!())
-        .verbosity(3)
+        .verbosity(args.verbose.log_level().unwrap())
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
         .unwrap();

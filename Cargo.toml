@@ -24,3 +24,5 @@ anyhow = "1.0.68"
 log = { version = "0.4.17", default-features = false, features = ["serde"] }
 stderrlog = { version = "0.5.4", default-features = false, features = ["timestamps"] }
 tokio = { version = "1.24.1", default-features = false }
+clap = { version = "4.0.32", features = ["derive"] }
+clap-verbosity-flag = "2.0.0"

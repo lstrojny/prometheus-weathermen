@@ -67,7 +67,7 @@ impl WeatherProvider for OpenWeather {
         })
     }
 
-    fn cache_lifetime(&self) -> Duration {
+    fn refresh_interval(&self) -> Duration {
         self.cache.refresh_interval
     }
 }
