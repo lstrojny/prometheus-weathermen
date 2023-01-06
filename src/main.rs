@@ -3,9 +3,13 @@ extern crate core;
 
 use crate::config::{get_provider_tasks, ProviderTasks};
 use crate::prometheus::prometheus_metrics;
+use crate::providers::Weather;
+use log::{error, info};
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
+use std::process::exit;
+use tokio::task::JoinError;
 
 mod config;
 mod prometheus;
@@ -20,31 +24,47 @@ async fn index(unscheduled_tasks: &State<ProviderTasks>) -> String {
         let prov_req = req.clone();
         let task_cache = cache.clone();
         join_set.spawn(task::spawn_blocking(move || {
+            info!(
+                "Requesting weather data for {:?} from {:?} ({:?}",
+                prov_req.name,
+                provider.id(),
+                prov_req.query,
+            );
             provider.for_coordinates(&task_cache, &prov_req)
         }));
     }
 
+    wait_for_metrics(join_set).await.unwrap_or_else(|e| {
+        error!("Error while requesting weather data {e}");
+        "".to_string()
+    })
+}
+
+async fn wait_for_metrics(
+    mut join_set: JoinSet<Result<anyhow::Result<Weather>, JoinError>>,
+) -> anyhow::Result<String> {
     let mut metrics = vec![];
 
     while let Some(result) = join_set.join_next().await {
-        match result {
-            Ok(result) => match result {
-                Ok(result) => match result {
-                    Ok(result) => metrics.push(prometheus_metrics(result)),
-                    Err(e) => println!("Error {e:?}"),
-                },
-                Err(e) => println!("Error {e:?}"),
-            },
-            Err(e) => println!("Error {e:?}"),
-        }
+        metrics.push(prometheus_metrics(result???)?);
     }
 
-    metrics.join("\n")
+    Ok(metrics.join("\n"))
 }
 
 #[launch]
 fn rocket() -> _ {
-    let tasks = get_provider_tasks().unwrap_or_else(|e| panic!("Fatal error: {e}"));
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(3)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();
+
+    let tasks = get_provider_tasks().unwrap_or_else(|e| {
+        error!("Fatal error: {e}");
+        exit(1);
+    });
 
     rocket::build().manage(tasks).mount("/", routes![index])
 }

@@ -40,18 +40,20 @@ struct MeteoblueResponse {
 }
 
 impl WeatherProvider for Meteoblue {
+    fn id(&self) -> &str {
+        SOURCE_URI
+    }
+
     fn for_coordinates(
         &self,
         cache: &Cache<String, String>,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        println!("Meteoblue for_coordinates start {request:?}");
-
         let url = Url::parse_with_params(
             ENDPOINT_URL,
             &[
-                ("lat", request.query.get_latitude().to_string()),
-                ("lon", request.query.get_longitude().to_string()),
+                ("lat", request.query.latitude.to_string()),
+                ("lon", request.query.longitude.to_string()),
                 ("format", "json".to_string()),
                 ("apikey", self.api_key.clone()),
             ],
@@ -71,7 +73,6 @@ impl WeatherProvider for Meteoblue {
         let sig = hex::encode(key.into_bytes());
 
         let signed_url = Url::parse_with_params(url.as_str(), &[("sig", sig)])?;
-        println!("Signed URL {:?}", signed_url.to_string());
 
         let client = reqwest::blocking::Client::new();
         let response: MeteoblueResponse = reqwest_cached_body_json::<MeteoblueResponse>(
@@ -82,7 +83,6 @@ impl WeatherProvider for Meteoblue {
             signed_url,
         )?;
 
-        println!("Meteoblue for_coordinates end {request:?}");
         Ok(Weather {
             source: SOURCE_URI.to_string(),
             location: request.name.clone(),

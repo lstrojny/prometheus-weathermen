@@ -21,3 +21,6 @@ serde_json = "1.0.91"
 moka = "0.9.6"
 humantime-serde = "1.1.1"
 anyhow = "1.0.68"
+log = { version = "0.4.17", default-features = false, features = ["serde"] }
+stderrlog = { version = "0.5.4", default-features = false, features = ["timestamps"] }
+tokio = { version = "1.24.1", default-features = false }

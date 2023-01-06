@@ -1,13 +1,14 @@
 use crate::config::{NAME, VERSION};
 use crate::providers::Weather;
+use log::debug;
 use opentelemetry::sdk::export::metrics::aggregation;
 use opentelemetry::sdk::metrics::{controllers, processors, selectors};
 use opentelemetry::sdk::Resource;
 use opentelemetry::{global, Context, KeyValue};
 use prometheus::TextEncoder;
 
-pub fn prometheus_metrics(weather: Weather) -> String {
-    println!("prometheus_metrics() {weather:?}");
+pub fn prometheus_metrics(weather: Weather) -> anyhow::Result<String> {
+    debug!("Formatting for prometheus {weather:?}");
 
     let controller = controllers::basic(processors::factory(
         selectors::simple::inexpensive(),
@@ -34,13 +35,13 @@ pub fn prometheus_metrics(weather: Weather) -> String {
             KeyValue::new("source", weather.source),
             KeyValue::new("location", weather.location),
             KeyValue::new("city", weather.city),
-            KeyValue::new("latitude", weather.coordinates.get_latitude().to_string()),
-            KeyValue::new("longitude", weather.coordinates.get_longitude().to_string()),
+            KeyValue::new("latitude", weather.coordinates.latitude.to_string()),
+            KeyValue::new("longitude", weather.coordinates.longitude.to_string()),
         ],
     );
 
     let encoder = TextEncoder::new();
     let metric_families = exporter.registry().gather();
 
-    encoder.encode_to_string(&metric_families).unwrap()
+    Ok(encoder.encode_to_string(&metric_families)?)
 }

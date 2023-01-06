@@ -26,12 +26,12 @@ impl IntoIterator for Providers {
     fn into_iter(self) -> Self::IntoIter {
         let mut vec: Vec<Arc<dyn WeatherProvider + Send + Sync>> = vec![];
 
-        if self.open_weather.is_some() {
-            vec.push(Arc::new(self.open_weather.unwrap()));
+        if let Some(provider) = self.open_weather {
+            vec.push(Arc::new(provider));
         }
 
-        if self.meteoblue.is_some() {
-            vec.push(Arc::new(self.meteoblue.unwrap()));
+        if let Some(provider) = self.meteoblue {
+            vec.push(Arc::new(provider));
         }
 
         IntoIter::into_iter(vec.into_iter())
@@ -50,23 +50,9 @@ impl Display for Coordinate {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Coordinates {
     #[serde(alias = "lat")]
-    latitude: Coordinate,
+    pub latitude: Coordinate,
     #[serde(alias = "lon")]
-    longitude: Coordinate,
-}
-impl Coordinates {
-    pub fn new(latitude: Coordinate, longitude: Coordinate) -> Self {
-        Coordinates {
-            latitude,
-            longitude,
-        }
-    }
-    pub fn get_latitude(&self) -> Coordinate {
-        self.latitude.clone()
-    }
-    pub fn get_longitude(&self) -> Coordinate {
-        self.longitude.clone()
-    }
+    pub longitude: Coordinate,
 }
 
 #[derive(Debug)]
@@ -85,6 +71,8 @@ pub struct WeatherRequest<T> {
 }
 
 pub trait WeatherProvider: std::fmt::Debug {
+    fn id(&self) -> &str;
+
     fn for_coordinates(
         &self,
         cache: &Cache<String, String>,

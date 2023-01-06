@@ -1,3 +1,4 @@
+use log::debug;
 use moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
@@ -39,16 +40,20 @@ pub fn reqwest_cached_body(
     let key = format!("{source} {method} {url}");
     let value = cache.get(&key);
 
+    debug!(
+        "Checking cache item for request \"{method:#} {url:#}\" for {source:?} with lifetime {:?}",
+        cache
+            .policy()
+            .time_to_live()
+            .unwrap_or(Duration::from_secs(0))
+    );
+
     if let Some(value) = value {
-        println!(
-            "CACHED for {:?}",
-            cache
-                .policy()
-                .time_to_live()
-                .unwrap_or(Duration::from_secs(0))
-        );
+        debug!("Found cached item for \"{method:#} {url:#}\"");
         return Ok(value);
     }
+
+    debug!("No cache item found for \"{method:#} {url:#}\". Requesting");
 
     let body = client.request(method, url).send()?.text()?;
     cache.insert(key, body.clone());

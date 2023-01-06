@@ -1,6 +1,7 @@
 use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use itertools::Itertools;
+use log::debug;
 use moka::sync::Cache;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -59,7 +60,8 @@ pub type ProviderTasks = Vec<(
 
 pub fn get_provider_tasks() -> anyhow::Result<ProviderTasks> {
     let config = parse()?;
-    println!("Config dump {config:?}");
+
+    debug!("Read config {:?}", config);
 
     let configured_providers = config
         .providers
@@ -71,7 +73,9 @@ pub fn get_provider_tasks() -> anyhow::Result<ProviderTasks> {
         let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
             .time_to_live(configured_provider.cache_lifetime())
             .build();
-        println!("Found configured provider {configured_provider:?}");
+
+        debug!("Using configured provider {configured_provider:?}");
+
         let locations = config.locations.clone();
         for (name, location) in locations {
             let configured_provider_for_task = configured_provider.clone();
