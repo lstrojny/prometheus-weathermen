@@ -3,12 +3,17 @@ latitude = 52.508963
 longitude = 13.435965
 
 [location.work]
-name = "Work place" # Optional, defaults to the ID of the location
+name = "Work place" # Optional, defaults to the ID of the location, in this case "work"
 latitude = 53.508963
 longitude = 14.435965
 
 [provider.open_weather]
+# API key for openweathermap.org, register your own
 api_key = "XXXXX"
+# Configure how often weather information should be refresh. Default is 10 minutes
+# Format: 15days, 2min, 10s
+# Can be combined: 1hour 30min
+refresh_interval = "10min"
 
 [provider.meteoblue]
 api_key = "XXX"

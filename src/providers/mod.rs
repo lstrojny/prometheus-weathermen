@@ -1,3 +1,4 @@
+mod cache;
 mod meteoblue;
 pub mod open_weather;
 mod units;
@@ -5,9 +6,11 @@ mod units;
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::units::Celsius;
+use moka::sync::Cache;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
+use std::time::Duration;
 use std::vec::IntoIter;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -82,5 +85,11 @@ pub struct WeatherRequest<T> {
 }
 
 pub trait WeatherProvider: std::fmt::Debug {
-    fn for_coordinates(&self, request: &WeatherRequest<Coordinates>) -> Result<Weather, String>;
+    fn for_coordinates(
+        &self,
+        cache: &Cache<String, String>,
+        request: &WeatherRequest<Coordinates>,
+    ) -> Result<Weather, String>;
+
+    fn cache_lifetime(&self) -> Duration;
 }

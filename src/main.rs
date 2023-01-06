@@ -4,6 +4,7 @@ extern crate core;
 use crate::config::parse;
 use crate::prometheus::prometheus_metrics;
 use crate::providers::{Coordinates, WeatherProvider, WeatherRequest};
+use moka::sync::Cache;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
@@ -18,10 +19,11 @@ async fn index(unscheduled_tasks: &State<UnscheduledTasks>) -> String {
     let mut join_set = JoinSet::new();
 
     #[allow(clippy::unnecessary_to_owned)]
-    for (provider, req) in unscheduled_tasks.to_vec() {
+    for (provider, req, cache) in unscheduled_tasks.to_vec() {
         let prov_req = req.clone();
+        let task_cache = cache.clone();
         join_set.spawn(task::spawn_blocking(move || {
-            provider.for_coordinates(&prov_req)
+            provider.for_coordinates(&task_cache, &prov_req)
         }));
     }
 
@@ -46,6 +48,7 @@ async fn index(unscheduled_tasks: &State<UnscheduledTasks>) -> String {
 type UnscheduledTasks = Vec<(
     Arc<dyn WeatherProvider + Send + Sync>,
     WeatherRequest<Coordinates>,
+    Cache<String, String>,
 )>;
 
 #[launch]
@@ -64,6 +67,9 @@ fn rocket() -> _ {
     let mut tasks: UnscheduledTasks = vec![];
 
     for configured_provider in configured_providers.into_iter() {
+        let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
+            .time_to_live(configured_provider.cache_lifetime())
+            .build();
         println!("Found configured provider {configured_provider:?}");
         let locations = config.locations.clone();
         for (name, location) in locations {
@@ -74,6 +80,7 @@ fn rocket() -> _ {
                     name: location.name.unwrap_or(name),
                     query: location.coordinates,
                 },
+                cache.clone(),
             ));
         }
     }

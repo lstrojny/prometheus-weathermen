@@ -1,15 +1,20 @@
+use crate::providers::cache::{reqwest_cached_json, CacheConfiguration};
 use crate::providers::units::Celsius;
 use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
 use hmac::{Hmac, Mac};
+use moka::sync::Cache;
 use reqwest::{Method, Url};
 use serde::Deserialize;
 use sha2::Sha256;
+use std::time::Duration;
 
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Meteoblue {
     pub api_key: String,
+    #[serde(flatten)]
+    pub cache: CacheConfiguration,
 }
 
 const SOURCE_URI: &str = "com.meteoblue";
@@ -34,7 +39,11 @@ struct MeteoblueResponse {
 }
 
 impl WeatherProvider for Meteoblue {
-    fn for_coordinates(&self, request: &WeatherRequest<Coordinates>) -> Result<Weather, String> {
+    fn for_coordinates(
+        &self,
+        cache: &Cache<String, String>,
+        request: &WeatherRequest<Coordinates>,
+    ) -> Result<Weather, String> {
         println!("Meteoblue for_coordinates start {request:?}");
 
         let url = match Url::parse_with_params(
@@ -63,14 +72,15 @@ impl WeatherProvider for Meteoblue {
         println!("Signed URL {:?}", signed_url.to_string());
 
         let client = reqwest::blocking::Client::new();
-        let request_builder = client.request(Method::GET, signed_url).send();
-
-        let response = match request_builder {
-            Ok(response) => match response.json::<MeteoblueResponse>() {
-                Ok(response) => response,
-                Err(err) => return Err(err.to_string()),
-            },
-            Err(err) => return Err(err.to_string()),
+        let response: MeteoblueResponse = match reqwest_cached_json::<MeteoblueResponse>(
+            SOURCE_URI,
+            cache,
+            &client,
+            Method::GET,
+            signed_url,
+        ) {
+            Ok(response) => response,
+            Err(err) => return Err(err),
         };
 
         println!("Meteoblue for_coordinates end {request:?}");
@@ -84,5 +94,9 @@ impl WeatherProvider for Meteoblue {
             temperature: response.data_current.temperature,
             coordinates: response.metadata.coordinates,
         })
+    }
+
+    fn cache_lifetime(&self) -> Duration {
+        self.cache.refresh_interval
     }
 }
