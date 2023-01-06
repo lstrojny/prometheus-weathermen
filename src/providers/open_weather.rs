@@ -25,7 +25,7 @@ struct OpenWeatherResponse {
 }
 
 impl WeatherProvider for OpenWeather {
-    fn for_coordinates(&self, request: WeatherRequest<Coordinates>) -> Result<Weather, String> {
+    fn for_coordinates(&self, request: &WeatherRequest<Coordinates>) -> Result<Weather, String> {
         println!("OpenWeather for_coordinates start {request:?}");
         let url = match Url::parse_with_params(
             ENDPOINT_URL,
@@ -53,7 +53,7 @@ impl WeatherProvider for OpenWeather {
         println!("OpenWeather for_coordinates end {request:?}");
         Ok(Weather {
             source: SOURCE_URI.to_string(),
-            location: request.name,
+            location: request.name.clone(),
             city: response.name,
             temperature: response.main.temp.to_celsius(),
             coordinates: response.coord,

@@ -75,12 +75,12 @@ pub struct Weather {
     pub coordinates: Coordinates,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WeatherRequest<T> {
     pub name: String,
     pub query: T,
 }
 
 pub trait WeatherProvider: std::fmt::Debug {
-    fn for_coordinates(&self, request: WeatherRequest<Coordinates>) -> Result<Weather, String>;
+    fn for_coordinates(&self, request: &WeatherRequest<Coordinates>) -> Result<Weather, String>;
 }

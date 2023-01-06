@@ -34,7 +34,7 @@ struct MeteoblueResponse {
 }
 
 impl WeatherProvider for Meteoblue {
-    fn for_coordinates(&self, request: WeatherRequest<Coordinates>) -> Result<Weather, String> {
+    fn for_coordinates(&self, request: &WeatherRequest<Coordinates>) -> Result<Weather, String> {
         println!("Meteoblue for_coordinates start {request:?}");
 
         let url = match Url::parse_with_params(
@@ -81,7 +81,7 @@ impl WeatherProvider for Meteoblue {
             source: SOURCE_URI.to_string(),
             location: request.name.clone(),
             city: match response.metadata.name.is_empty() {
-                true => request.name,
+                true => request.name.clone(),
                 false => response.metadata.name,
             },
             temperature: response.data_current.temperature,
