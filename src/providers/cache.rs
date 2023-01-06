@@ -16,29 +16,26 @@ fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
-pub fn reqwest_cached_json<T: DeserializeOwned>(
+pub fn reqwest_cached_body_json<T: DeserializeOwned>(
     source: &str,
     cache: &Cache<String, String>,
     client: &Client,
     method: Method,
     url: Url,
-) -> Result<T, String> {
-    match reqwest_cached(source, cache, client, method, url) {
-        Ok(result) => match serde_json::from_str::<T>(&result) {
-            Ok(des) => Ok(des),
-            Err(e) => Err(e.to_string()),
-        },
-        Err(e) => Err(e),
-    }
+) -> anyhow::Result<T> {
+    let body = reqwest_cached_body(source, cache, client, method, url)?;
+    let response = serde_json::from_str::<T>(&body)?;
+
+    Ok(response)
 }
 
-pub fn reqwest_cached(
+pub fn reqwest_cached_body(
     source: &str,
     cache: &Cache<String, String>,
     client: &Client,
     method: Method,
     url: Url,
-) -> Result<String, String> {
+) -> anyhow::Result<String> {
     let key = format!("{source} {method} {url}");
     let value = cache.get(&key);
 
@@ -53,17 +50,8 @@ pub fn reqwest_cached(
         return Ok(value);
     }
 
-    let result = client.request(method, url).send();
+    let body = client.request(method, url).send()?.text()?;
+    cache.insert(key, body.clone());
 
-    match result {
-        Ok(response) => match response.text() {
-            Ok(response) => {
-                cache.insert(key, response.clone());
-
-                Ok(response)
-            }
-            Err(err) => Err(err.to_string()),
-        },
-        Err(err) => Err(err.to_string()),
-    }
+    Ok(body)
 }

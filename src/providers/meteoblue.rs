@@ -1,6 +1,7 @@
-use crate::providers::cache::{reqwest_cached_json, CacheConfiguration};
+use crate::providers::cache::{reqwest_cached_body_json, CacheConfiguration};
 use crate::providers::units::Celsius;
 use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
+use anyhow::Context;
 use hmac::{Hmac, Mac};
 use moka::sync::Cache;
 use reqwest::{Method, Url};
@@ -43,10 +44,10 @@ impl WeatherProvider for Meteoblue {
         &self,
         cache: &Cache<String, String>,
         request: &WeatherRequest<Coordinates>,
-    ) -> Result<Weather, String> {
+    ) -> anyhow::Result<Weather> {
         println!("Meteoblue for_coordinates start {request:?}");
 
-        let url = match Url::parse_with_params(
+        let url = Url::parse_with_params(
             ENDPOINT_URL,
             &[
                 ("lat", request.query.get_latitude().to_string()),
@@ -54,34 +55,32 @@ impl WeatherProvider for Meteoblue {
                 ("format", "json".to_string()),
                 ("apikey", self.api_key.clone()),
             ],
-        ) {
-            Ok(url) => url,
-            Err(e) => return Err(e.to_string()),
-        };
+        )?;
 
-        let mut mac = HmacSha256::new_from_slice(self.api_key.as_bytes()).unwrap();
+        let mut mac = HmacSha256::new_from_slice(self.api_key.as_bytes())?;
 
         mac.update(url.path().as_bytes());
         mac.update("?".as_bytes());
-        mac.update(url.query().unwrap().as_bytes());
+        mac.update(
+            url.query()
+                .with_context(|| "Unreachable: query is empty")?
+                .as_bytes(),
+        );
         let key = mac.finalize();
 
         let sig = hex::encode(key.into_bytes());
 
-        let signed_url = Url::parse_with_params(url.as_str(), &[("sig", sig)]).unwrap();
+        let signed_url = Url::parse_with_params(url.as_str(), &[("sig", sig)])?;
         println!("Signed URL {:?}", signed_url.to_string());
 
         let client = reqwest::blocking::Client::new();
-        let response: MeteoblueResponse = match reqwest_cached_json::<MeteoblueResponse>(
+        let response: MeteoblueResponse = reqwest_cached_body_json::<MeteoblueResponse>(
             SOURCE_URI,
             cache,
             &client,
             Method::GET,
             signed_url,
-        ) {
-            Ok(response) => response,
-            Err(err) => return Err(err),
-        };
+        )?;
 
         println!("Meteoblue for_coordinates end {request:?}");
         Ok(Weather {

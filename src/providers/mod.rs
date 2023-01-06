@@ -89,7 +89,7 @@ pub trait WeatherProvider: std::fmt::Debug {
         &self,
         cache: &Cache<String, String>,
         request: &WeatherRequest<Coordinates>,
-    ) -> Result<Weather, String>;
+    ) -> anyhow::Result<Weather>;
 
     fn cache_lifetime(&self) -> Duration;
 }

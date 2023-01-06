@@ -1,4 +1,4 @@
-use crate::providers::cache::{reqwest_cached_json, CacheConfiguration};
+use crate::providers::cache::{reqwest_cached_body_json, CacheConfiguration};
 use crate::providers::units::{Kelvin, ToCelsius};
 use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
 use moka::sync::Cache;
@@ -34,32 +34,26 @@ impl WeatherProvider for OpenWeather {
         &self,
         cache: &Cache<String, String>,
         request: &WeatherRequest<Coordinates>,
-    ) -> Result<Weather, String> {
+    ) -> anyhow::Result<Weather> {
         println!("OpenWeather for_coordinates start {request:?}");
-        let url = match Url::parse_with_params(
+        let url = Url::parse_with_params(
             ENDPOINT_URL,
             &[
                 ("lat", request.query.get_latitude().to_string()),
                 ("lon", request.query.get_longitude().to_string()),
                 ("appid", self.api_key.to_owned()),
             ],
-        ) {
-            Ok(url) => url,
-            Err(e) => return Err(e.to_string()),
-        };
+        )?;
 
         let client = reqwest::blocking::Client::new();
 
-        let response = match reqwest_cached_json::<OpenWeatherResponse>(
+        let response = reqwest_cached_body_json::<OpenWeatherResponse>(
             SOURCE_URI,
             cache,
             &client,
             Method::GET,
             url,
-        ) {
-            Ok(response) => response,
-            Err(err) => return Err(err),
-        };
+        )?;
 
         println!("OpenWeather for_coordinates end {request:?}");
         Ok(Weather {

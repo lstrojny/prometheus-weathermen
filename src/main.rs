@@ -1,21 +1,18 @@
 #![feature(absolute_path)]
 extern crate core;
 
-use crate::config::parse;
+use crate::config::{get_provider_tasks, ProviderTasks};
 use crate::prometheus::prometheus_metrics;
-use crate::providers::{Coordinates, WeatherProvider, WeatherRequest};
-use moka::sync::Cache;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
-use std::sync::Arc;
 
 mod config;
 mod prometheus;
 mod providers;
 
 #[get("/")]
-async fn index(unscheduled_tasks: &State<UnscheduledTasks>) -> String {
+async fn index(unscheduled_tasks: &State<ProviderTasks>) -> String {
     let mut join_set = JoinSet::new();
 
     #[allow(clippy::unnecessary_to_owned)]
@@ -45,45 +42,9 @@ async fn index(unscheduled_tasks: &State<UnscheduledTasks>) -> String {
     metrics.join("\n")
 }
 
-type UnscheduledTasks = Vec<(
-    Arc<dyn WeatherProvider + Send + Sync>,
-    WeatherRequest<Coordinates>,
-    Cache<String, String>,
-)>;
-
 #[launch]
 fn rocket() -> _ {
-    let config = match parse() {
-        Ok(config) => config,
-        Err(err) => panic!("{}", err),
-    };
-    println!("Config dump {config:?}");
-
-    let configured_providers = match config.providers.clone() {
-        Some(providers) => providers,
-        None => panic!("No providers defined"),
-    };
-
-    let mut tasks: UnscheduledTasks = vec![];
-
-    for configured_provider in configured_providers.into_iter() {
-        let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
-            .time_to_live(configured_provider.cache_lifetime())
-            .build();
-        println!("Found configured provider {configured_provider:?}");
-        let locations = config.locations.clone();
-        for (name, location) in locations {
-            let configured_provider_for_task = configured_provider.clone();
-            tasks.push((
-                configured_provider_for_task,
-                WeatherRequest {
-                    name: location.name.unwrap_or(name),
-                    query: location.coordinates,
-                },
-                cache.clone(),
-            ));
-        }
-    }
+    let tasks = get_provider_tasks().unwrap_or_else(|e| panic!("Fatal error: {e}"));
 
     rocket::build().manage(tasks).mount("/", routes![index])
 }
