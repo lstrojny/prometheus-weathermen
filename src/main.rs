@@ -5,7 +5,6 @@ use crate::config::{get_provider_tasks, ProviderTasks};
 use crate::prometheus::prometheus_metrics;
 use crate::providers::Weather;
 use clap::Parser;
-use clap_verbosity_flag::WarnLevel;
 use log::{error, info};
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
@@ -54,11 +53,28 @@ async fn wait_for_metrics(
     Ok(metrics.join("\n"))
 }
 
+#[cfg(debug_assertions)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct DebugLevel;
+
+#[cfg(debug_assertions)]
+impl clap_verbosity_flag::LogLevel for DebugLevel {
+    fn default() -> Option<log::Level> {
+        Some(log::Level::Debug)
+    }
+}
+
+#[cfg(debug_assertions)]
+type DefaultLogLevel = DebugLevel;
+
+#[cfg(not(debug_assertions))]
+type DefaultLogLevel = clap_verbosity_flag::WarnLevel;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[clap(flatten)]
-    verbose: clap_verbosity_flag::Verbosity<WarnLevel>,
+    verbose: clap_verbosity_flag::Verbosity<DefaultLogLevel>,
 }
 
 #[launch]
