@@ -1,6 +1,5 @@
 use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
-use itertools::Itertools;
 use log::{debug, warn};
 use moka::sync::Cache;
 use serde::Deserialize;
@@ -34,21 +33,28 @@ fn parse() -> anyhow::Result<Config> {
         "config.toml",
         "config.toml.dist",
     ];
-    let canonical_files = config_files.iter().filter_map(|p| path::absolute(p).ok());
-    let config = canonical_files.clone().fold(None as Option<String>, {
-        |accum, f| accum.or_else(|| fs::read_to_string(f).ok())
-    });
+    let config = config_files
+        .iter()
+        .filter_map(|p| path::absolute(p).ok())
+        .fold(None as Option<String>, {
+            |accum, file| {
+                accum.or_else(|| {
+                    debug!("Trying config file {file:?}");
+                    fs::read_to_string(file.clone())
+                        .map(|s| {
+                            debug!("Found config file {:?}", file);
+                            s
+                        })
+                        .ok()
+                })
+            }
+        });
 
-    let contents = config.with_context(|| {
-        format!(
-            "Could not find config file. Tried these files: \"{}\"",
-            canonical_files
-                .map(|v| v.to_string_lossy().into_owned())
-                .join("\", \"")
-        )
-    })?;
+    let contents = config.with_context(|| "Could not find config file".to_string())?;
 
     let config = toml::from_str(&contents)?;
+
+    debug!("Config is {:?}", config);
 
     Ok(config)
 }
@@ -62,8 +68,6 @@ pub type ProviderTasks = Vec<(
 pub fn get_provider_tasks() -> anyhow::Result<ProviderTasks> {
     let config = parse()?;
 
-    debug!("Read config {:?}", config);
-
     let configured_providers = config
         .providers
         .with_context(|| "No providers configured")?;
@@ -75,7 +79,7 @@ pub fn get_provider_tasks() -> anyhow::Result<ProviderTasks> {
             .time_to_live(configured_provider.refresh_interval())
             .build();
 
-        debug!("Using configured provider {configured_provider:?}");
+        debug!("Found configured provider {configured_provider:?}");
 
         if configured_provider.refresh_interval() < Duration::from_secs(60 * 5) {
             warn!(
