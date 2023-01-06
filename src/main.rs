@@ -1,13 +1,12 @@
 #![feature(absolute_path)]
 extern crate core;
 
-use crate::config::{parse, Config};
+use crate::config::parse;
 use crate::prometheus::prometheus_metrics;
 use crate::providers::{Coordinates, WeatherProvider, WeatherRequest};
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
-use std::ops::Deref;
 use std::sync::Arc;
 
 mod config;
@@ -15,9 +14,10 @@ mod prometheus;
 mod providers;
 
 #[get("/")]
-async fn index(unscheduled_tasks: &State<UnscheduledTasks>, config: &State<Config>) -> String {
+async fn index(unscheduled_tasks: &State<UnscheduledTasks>) -> String {
     let mut join_set = JoinSet::new();
 
+    #[allow(clippy::unnecessary_to_owned)]
     for (provider, req) in unscheduled_tasks.to_vec() {
         let prov_req = req.clone();
         join_set.spawn(task::spawn_blocking(move || {
@@ -78,8 +78,5 @@ fn rocket() -> _ {
         }
     }
 
-    rocket::build()
-        .manage(config)
-        .manage(tasks)
-        .mount("/", routes![index])
+    rocket::build().manage(tasks).mount("/", routes![index])
 }

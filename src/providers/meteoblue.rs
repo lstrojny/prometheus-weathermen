@@ -52,8 +52,7 @@ impl WeatherProvider for Meteoblue {
             Err(e) => return Err(e.to_string()),
         };
 
-        let mut mac = HmacSha256::new_from_slice(self.api_key.as_bytes())
-            .expect("HMAC can take key of any size");
+        let mut mac = HmacSha256::new_from_slice(self.api_key.as_bytes()).unwrap();
 
         mac.update(url.path().as_bytes());
         mac.update("?".as_bytes());
