@@ -40,8 +40,6 @@ impl WeatherProvider for Meteoblue {
         let url = match Url::parse_with_params(
             ENDPOINT_URL,
             &[
-                ("forecast_days", "1".to_string()),
-                ("history_days", "0".to_string()),
                 ("lat", request.query.get_latitude().to_string()),
                 ("lon", request.query.get_longitude().to_string()),
                 ("format", "json".to_string()),
