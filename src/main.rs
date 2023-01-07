@@ -26,7 +26,7 @@ mod prometheus;
 mod providers;
 
 #[get("/")]
-fn index() -> (Status, &'static str) {
+const fn index() -> (Status, &'static str) {
     (Status::NotFound, "Check /metrics")
 }
 
