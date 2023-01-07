@@ -3,17 +3,17 @@ use moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct CacheConfiguration {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Configuration {
     #[serde(default = "default_refresh_interval")]
     #[serde(with = "humantime_serde")]
     pub refresh_interval: Duration,
 }
 
-fn default_refresh_interval() -> Duration {
+const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 

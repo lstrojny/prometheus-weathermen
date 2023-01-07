@@ -1,21 +1,21 @@
-use crate::providers::cache::{reqwest_cached_body_json, CacheConfiguration};
+use crate::providers::cache::{reqwest_cached_body_json, Configuration};
 use crate::providers::units::Celsius;
 use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use hmac::{Hmac, Mac};
 use moka::sync::Cache;
 use reqwest::{Method, Url};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::time::Duration;
 
 type HmacSha256 = Hmac<Sha256>;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Meteoblue {
     pub api_key: String,
     #[serde(flatten)]
-    pub cache: CacheConfiguration,
+    pub cache: Configuration,
 }
 
 const SOURCE_URI: &str = "com.meteoblue";
@@ -62,7 +62,7 @@ impl WeatherProvider for Meteoblue {
         let mut mac = HmacSha256::new_from_slice(self.api_key.as_bytes())?;
 
         mac.update(url.path().as_bytes());
-        mac.update("?".as_bytes());
+        mac.update(b"?");
         mac.update(
             url.query()
                 .with_context(|| "Unreachable: query is empty")?
@@ -86,9 +86,10 @@ impl WeatherProvider for Meteoblue {
         Ok(Weather {
             source: SOURCE_URI.to_string(),
             location: request.name.clone(),
-            city: match response.metadata.name.is_empty() {
-                true => request.name.clone(),
-                false => response.metadata.name,
+            city: if response.metadata.name.is_empty() {
+                request.name.clone()
+            } else {
+                response.metadata.name
             },
             temperature: response.data_current.temperature,
             coordinates: response.metadata.coordinates,

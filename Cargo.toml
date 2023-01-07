@@ -1,15 +1,17 @@
 [package]
 name = "prometheus-weathermen"
+description = "A prometheus exporter for weather data from various weather APIs"
 version = "0.1.0"
 edition = "2021"
+license = "GPL"
+keywords = ["prometheus", "prometheus-exporter", "weather", "monitoring"]
+categories = ["command-line-utilities"]
+repository = "https://github.com/lstrojny/prometheus-weathermen"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 rocket = "0.5.0-rc.2"
-opentelemetry = "0.18.0"
-opentelemetry-prometheus = "0.11.0"
-prometheus = "0.13.3"
 reqwest = { version = "0.11.13", features = ["json", "blocking"] }
 serde = "1.0.152"
 toml = "0.5.10"
@@ -25,3 +27,5 @@ stderrlog = { version = "0.5.4", default-features = false, features = ["timestam
 tokio = { version = "1.24.1", default-features = false }
 clap = { version = "4.0.32", features = ["derive"] }
 clap-verbosity-flag = "2.0.0"
+figment = { version = "0.10.8", features = ["toml", "env"] }
+prometheus-client = "0.19.0"

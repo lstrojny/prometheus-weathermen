@@ -7,7 +7,7 @@ pub struct Kelvin(f32);
 pub struct Celsius(f32);
 
 impl Celsius {
-    pub(crate) fn to_f32(&self) -> f32 {
+    pub(crate) const fn to_f32(&self) -> f32 {
         self.0
     }
 }
@@ -33,7 +33,7 @@ impl ToCelsius for Fahrenheit {
 }
 
 impl ToCelsius for Celsius {
-    fn to_celsius(&self) -> Celsius {
-        Celsius(self.0)
+    fn to_celsius(&self) -> Self {
+        Self(self.0)
     }
 }

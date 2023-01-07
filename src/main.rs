@@ -1,14 +1,22 @@
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::missing_const_for_fn)]
+#![warn(clippy::cargo)]
+#![warn(clippy::cargo_common_metadata)]
+#![allow(clippy::no_effect_underscore_binding)]
 #![feature(absolute_path)]
 extern crate core;
 
-use crate::config::{get_provider_tasks, ProviderTasks};
-use crate::prometheus::prometheus_metrics;
+use crate::config::{get_provider_tasks, read, ProviderTasks, DEFAULT_CONFIG};
+use crate::prometheus::format;
 use crate::providers::Weather;
-use clap::Parser;
+use clap::{arg, command, Parser};
 use log::{error, info};
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
+use std::path::PathBuf;
 use std::process::exit;
 use tokio::task::JoinError;
 
@@ -26,7 +34,7 @@ async fn index(unscheduled_tasks: &State<ProviderTasks>) -> String {
         let task_cache = cache.clone();
         join_set.spawn(task::spawn_blocking(move || {
             info!(
-                "Requesting weather data for {:?} from {:?} ({:?}",
+                "Requesting weather data for {:?} from {:?} ({:?})",
                 prov_req.name,
                 provider.id(),
                 prov_req.query,
@@ -37,20 +45,20 @@ async fn index(unscheduled_tasks: &State<ProviderTasks>) -> String {
 
     wait_for_metrics(join_set).await.unwrap_or_else(|e| {
         error!("Error while requesting weather data {e}");
-        "".to_string()
+        String::new()
     })
 }
 
 async fn wait_for_metrics(
     mut join_set: JoinSet<Result<anyhow::Result<Weather>, JoinError>>,
 ) -> anyhow::Result<String> {
-    let mut metrics = vec![];
+    let mut weather = vec![];
 
     while let Some(result) = join_set.join_next().await {
-        metrics.push(prometheus_metrics(result???)?);
+        weather.push(result???);
     }
 
-    Ok(metrics.join("\n"))
+    format(weather)
 }
 
 #[cfg(debug_assertions)]
@@ -75,23 +83,36 @@ type DefaultLogLevel = clap_verbosity_flag::WarnLevel;
 struct Args {
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity<DefaultLogLevel>,
+
+    // Custom config file location
+    #[arg(short, long, default_value = DEFAULT_CONFIG)]
+    config: PathBuf,
 }
 
 #[launch]
 fn rocket() -> _ {
     let args = Args::parse();
 
+    let log_level = args.verbose.log_level().unwrap();
+
     stderrlog::new()
         .module(module_path!())
-        .verbosity(args.verbose.log_level().unwrap())
+        .verbosity(log_level)
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
         .unwrap();
 
-    let tasks = get_provider_tasks().unwrap_or_else(|e| {
+    let config = read(args.config, log_level).unwrap_or_else(|e| {
         error!("Fatal error: {e}");
         exit(1);
     });
 
-    rocket::build().manage(tasks).mount("/", routes![index])
+    let tasks = get_provider_tasks(config.clone()).unwrap_or_else(|e| {
+        error!("Fatal error: {e}");
+        exit(1);
+    });
+
+    rocket::custom(config.http)
+        .manage(tasks)
+        .mount("/", routes![index])
 }

@@ -22,6 +22,10 @@
       in {
         devShell = pkgs.mkShell {
           packages = [ nightly pkgs.darwin.apple_sdk.frameworks.Security pkgs.openssl pkgs.pkgconfig ];
+          shellHook = ''
+            echo "Toolchain: ${pkgs.lib.getBin nightly}/bin"
+            echo " rust-std: ${pkgs.lib.getLib nightly}/lib/rustlib/src/rust/library"
+          '';
         };
       });
 }

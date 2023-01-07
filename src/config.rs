@@ -1,60 +1,79 @@
 use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
-use log::{debug, warn};
+use figment::{
+    providers::{Format, Toml},
+    Figment,
+};
+use log::{debug, info, warn, Level};
 use moka::sync::Cache;
+use rocket::config::Ident;
+use rocket::figment::providers::Serialized;
+use rocket::serde::Serialize;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{fs, path};
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const DEFAULT_CONFIG: &str = concat!("/etc/", env!("CARGO_PKG_NAME"), "/weathermen.toml");
+const DEFAULT_PORT: u16 = 36333;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Location {
     pub name: Option<String>,
     #[serde(flatten)]
     pub coordinates: Coordinates,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     #[serde(rename = "location")]
     pub locations: HashMap<String, Location>,
     #[serde(rename = "provider")]
     pub providers: Option<Providers>,
+    pub http: rocket::Config,
+    pub auth: Option<HashMap<String, String>>,
 }
 
-fn parse() -> anyhow::Result<Config> {
-    let config_files = [
-        &format!("/etc/{NAME}/config.toml"),
-        "config.toml",
-        "config.toml.dist",
-    ];
-    let config = config_files
-        .iter()
-        .filter_map(|p| path::absolute(p).ok())
-        .fold(None as Option<String>, {
-            |accum, file| {
-                accum.or_else(|| {
-                    debug!("Trying config file {file:?}");
-                    fs::read_to_string(file.clone())
-                        .map(|s| {
-                            debug!("Found config file {:?}", file);
-                            s
-                        })
-                        .ok()
-                })
-            }
-        });
+fn default_rocket_config() -> rocket::Config {
+    rocket::Config {
+        port: DEFAULT_PORT,
+        ident: Ident::try_new(NAME.to_string()).unwrap(),
+        ..rocket::Config::default()
+    }
+}
 
-    let contents = config.with_context(|| "Could not find config file".to_string())?;
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            locations: HashMap::new(),
+            providers: None,
+            http: default_rocket_config(),
+            auth: None,
+        }
+    }
+}
 
-    let config = toml::from_str(&contents)?;
+pub fn read(config_file: PathBuf, log_level: Level) -> anyhow::Result<Config> {
+    info!("Reading config file {config_file:?}");
 
-    debug!("Config is {:?}", config);
+    let config: Config = Figment::new()
+        .merge(Serialized::defaults(Config::default()))
+        .merge(Toml::file(config_file))
+        .merge((
+            "http.log_level",
+            match log_level {
+                Level::Trace | Level::Debug => rocket::log::LogLevel::Debug,
+                Level::Info | Level::Warn => rocket::log::LogLevel::Normal,
+                Level::Error => rocket::log::LogLevel::Critical,
+            },
+        ))
+        .extract()?;
+
+    debug!("Read config is {:?}", config);
 
     Ok(config)
 }
@@ -65,16 +84,14 @@ pub type ProviderTasks = Vec<(
     Cache<String, String>,
 )>;
 
-pub fn get_provider_tasks() -> anyhow::Result<ProviderTasks> {
-    let config = parse()?;
-
+pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
     let configured_providers = config
         .providers
         .with_context(|| "No providers configured")?;
 
     let mut tasks: ProviderTasks = vec![];
 
-    for configured_provider in configured_providers.into_iter() {
+    for configured_provider in configured_providers {
         let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
             .time_to_live(configured_provider.refresh_interval())
             .build();

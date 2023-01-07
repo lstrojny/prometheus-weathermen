@@ -7,13 +7,13 @@ use crate::providers::meteoblue::Meteoblue;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::units::Celsius;
 use moka::sync::Cache;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use std::time::Duration;
 use std::vec::IntoIter;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Providers {
     open_weather: Option<OpenWeather>,
     meteoblue: Option<Meteoblue>,
@@ -38,7 +38,7 @@ impl IntoIterator for Providers {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coordinate(f32);
 impl Display for Coordinate {
     // Standardize 7 digits for coordinates and that should be plenty
@@ -47,7 +47,7 @@ impl Display for Coordinate {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coordinates {
     #[serde(alias = "lat")]
     pub latitude: Coordinate,

@@ -1,20 +1,21 @@
-use crate::providers::cache::{reqwest_cached_body_json, CacheConfiguration};
+use crate::providers::cache::{reqwest_cached_body_json, Configuration};
 use crate::providers::units::{Kelvin, ToCelsius};
 use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
 use moka::sync::Cache;
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
+use serde::Serialize;
 use std::string::ToString;
 use std::time::Duration;
 
 const SOURCE_URI: &str = "org.openweathermap";
 const ENDPOINT_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenWeather {
     pub api_key: String,
     #[serde(flatten)]
-    pub cache: CacheConfiguration,
+    pub cache: Configuration,
 }
 
 #[derive(Deserialize)]
@@ -44,7 +45,7 @@ impl WeatherProvider for OpenWeather {
             &[
                 ("lat", request.query.latitude.to_string()),
                 ("lon", request.query.longitude.to_string()),
-                ("appid", self.api_key.to_owned()),
+                ("appid", self.api_key.to_string()),
             ],
         )?;
 
