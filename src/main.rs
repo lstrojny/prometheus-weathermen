@@ -13,6 +13,7 @@ use crate::prometheus::format;
 use crate::providers::Weather;
 use clap::{arg, command, Parser};
 use log::{error, info};
+use rocket::http::Status;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use rocket::{get, launch, routes, State};
@@ -25,7 +26,12 @@ mod prometheus;
 mod providers;
 
 #[get("/")]
-async fn index(unscheduled_tasks: &State<ProviderTasks>) -> String {
+fn index() -> (Status, &'static str) {
+    (Status::NotFound, "Check /metrics")
+}
+
+#[get("/metrics")]
+async fn metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, String) {
     let mut join_set = JoinSet::new();
 
     #[allow(clippy::unnecessary_to_owned)]
@@ -43,10 +49,16 @@ async fn index(unscheduled_tasks: &State<ProviderTasks>) -> String {
         }));
     }
 
-    wait_for_metrics(join_set).await.unwrap_or_else(|e| {
-        error!("Error while requesting weather data {e}");
-        String::new()
-    })
+    wait_for_metrics(join_set).await.map_or_else(
+        |e| {
+            error!("Error while fetching weather data {e}");
+            (
+                Status::InternalServerError,
+                "Error while fetching weather data. Check the logs".to_string(),
+            )
+        },
+        |metrics| (Status::Ok, metrics),
+    )
 }
 
 async fn wait_for_metrics(
@@ -114,5 +126,5 @@ fn rocket() -> _ {
 
     rocket::custom(config.http)
         .manage(tasks)
-        .mount("/", routes![index])
+        .mount("/", routes![index, metrics])
 }
