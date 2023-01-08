@@ -14,17 +14,18 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        nightly = pkgs.rust-bin.selectLatestNightlyWith (toolchain:
-          toolchain.default.override {
-            extensions = [ "rust-src" "rust-analyzer" "rust-std" ];
-            targets = [ "aarch64-apple-darwin" "x86_64-unknown-linux-gnu" ];
-          });
+        rust-env = pkgs.rust-bin.stable.latest.complete;
       in {
         devShell = pkgs.mkShell {
-          packages = [ nightly pkgs.darwin.apple_sdk.frameworks.Security pkgs.openssl pkgs.pkgconfig ];
+          packages = [
+            pkgs.rust-bin.stable.latest.complete
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.openssl
+            pkgs.pkgconfig
+          ];
           shellHook = ''
-            echo "Toolchain: ${pkgs.lib.getBin nightly}/bin"
-            echo " rust-std: ${pkgs.lib.getLib nightly}/lib/rustlib/src/rust/library"
+            echo "Toolchain: ${pkgs.lib.getBin rust-env}/bin"
+            echo " rust-std: ${pkgs.lib.getLib rust-env}/lib/rustlib/src/rust/library"
           '';
         };
       });
