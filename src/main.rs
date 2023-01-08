@@ -8,30 +8,50 @@
 #![feature(absolute_path)]
 extern crate core;
 
-use crate::config::{get_provider_tasks, read, ProviderTasks, DEFAULT_CONFIG};
+use crate::config::{get_provider_tasks, read, Credentials, ProviderTasks, DEFAULT_CONFIG};
+use crate::http::{maybe_authenticate, ForbiddenResponse, UnauthorizedResponse};
 use crate::prometheus::format;
 use crate::providers::Weather;
 use clap::{arg, command, Parser};
-use log::{error, info};
-use rocket::http::Status;
+use log::{debug, error, info};
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
-use rocket::{get, launch, routes, State};
+use rocket::{get, http::Status, launch, routes, Either, State};
+use rocket_basicauth::BasicAuth;
 use std::path::PathBuf;
 use std::process::exit;
 use tokio::task::JoinError;
 
 mod config;
+mod http;
 mod prometheus;
 mod providers;
 
 #[get("/")]
-const fn index() -> (Status, &'static str) {
-    (Status::NotFound, "Check /metrics")
+#[allow(clippy::needless_pass_by_value)]
+fn index(
+    credentials: &State<Option<Credentials>>,
+    auth: Option<BasicAuth>,
+) -> Result<(Status, &'static str), Either<UnauthorizedResponse, ForbiddenResponse>> {
+    match maybe_authenticate(credentials, &auth) {
+        Ok(_) => Ok((Status::NotFound, "Check /metrics")),
+        Err(e) => Err(e),
+    }
 }
 
 #[get("/metrics")]
-async fn metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, String) {
+async fn metrics(
+    unscheduled_tasks: &State<ProviderTasks>,
+    credentials: &State<Option<Credentials>>,
+    auth: Option<BasicAuth>,
+) -> Result<(Status, String), Either<UnauthorizedResponse, ForbiddenResponse>> {
+    match maybe_authenticate(credentials, &auth) {
+        Ok(_) => Ok(serve_metrics(unscheduled_tasks).await),
+        Err(e) => Err(e),
+    }
+}
+
+async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, String) {
     let mut join_set = JoinSet::new();
 
     #[allow(clippy::unnecessary_to_owned)]
@@ -108,11 +128,12 @@ fn rocket() -> _ {
     let log_level = args.verbose.log_level().unwrap();
 
     stderrlog::new()
-        .module(module_path!())
         .verbosity(log_level)
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
         .unwrap();
+
+    debug!("Configured logger with level {log_level:?}");
 
     let config = read(args.config, log_level).unwrap_or_else(|e| {
         error!("Fatal error: {e}");
@@ -126,5 +147,6 @@ fn rocket() -> _ {
 
     rocket::custom(config.http)
         .manage(tasks)
+        .manage(config.auth)
         .mount("/", routes![index, metrics])
 }

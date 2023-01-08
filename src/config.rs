@@ -35,7 +35,23 @@ pub struct Config {
     #[serde(rename = "provider")]
     pub providers: Option<Providers>,
     pub http: rocket::Config,
-    pub auth: Option<HashMap<String, String>>,
+    pub auth: Option<Credentials>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Credentials(pub HashMap<String, String>);
+
+impl<const N: usize> From<[(String, String); N]> for Credentials {
+    fn from(arr: [(String, String); N]) -> Self {
+        Self(HashMap::from(arr))
+    }
+}
+
+#[cfg(test)]
+impl Credentials {
+    pub fn empty() -> Self {
+        Self(HashMap::new())
+    }
 }
 
 fn default_rocket_config() -> rocket::Config {
