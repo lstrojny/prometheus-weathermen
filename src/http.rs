@@ -1,10 +1,84 @@
 use crate::config;
-use crate::config::Credentials;
 use config::NAME;
-use log::{debug, error, trace};
+use log::{debug, error, info, trace};
 use rocket::http::{Header, Status};
-use rocket::{Either, Responder};
+use rocket::{get, Either, Responder, State};
 use rocket_basicauth::BasicAuth;
+
+use crate::config::Credentials;
+use crate::config::ProviderTasks;
+
+use crate::prometheus::format;
+use crate::providers::Weather;
+use rocket::tokio::task;
+use rocket::tokio::task::JoinSet;
+use tokio::task::JoinError;
+
+#[get("/")]
+#[allow(clippy::needless_pass_by_value)]
+pub fn index(
+    credentials: &State<Option<Credentials>>,
+    auth: Option<BasicAuth>,
+) -> Result<(Status, &'static str), Either<UnauthorizedResponse, ForbiddenResponse>> {
+    match maybe_authenticate(credentials, &auth) {
+        Ok(_) => Ok((Status::NotFound, "Check /metrics")),
+        Err(e) => Err(e),
+    }
+}
+
+#[get("/metrics")]
+pub async fn metrics(
+    unscheduled_tasks: &State<ProviderTasks>,
+    credentials: &State<Option<Credentials>>,
+    auth: Option<BasicAuth>,
+) -> Result<(Status, String), Either<UnauthorizedResponse, ForbiddenResponse>> {
+    match maybe_authenticate(credentials, &auth) {
+        Ok(_) => Ok(serve_metrics(unscheduled_tasks).await),
+        Err(e) => Err(e),
+    }
+}
+
+async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, String) {
+    let mut join_set = JoinSet::new();
+
+    #[allow(clippy::unnecessary_to_owned)]
+    for (provider, req, cache) in unscheduled_tasks.to_vec() {
+        let prov_req = req.clone();
+        let task_cache = cache.clone();
+        join_set.spawn(task::spawn_blocking(move || {
+            info!(
+                "Requesting weather data for {:?} from {:?} ({:?})",
+                prov_req.name,
+                provider.id(),
+                prov_req.query,
+            );
+            provider.for_coordinates(&task_cache, &prov_req)
+        }));
+    }
+
+    wait_for_metrics(join_set).await.map_or_else(
+        |e| {
+            error!("Error while fetching weather data {e}");
+            (
+                Status::InternalServerError,
+                "Error while fetching weather data. Check the logs".to_string(),
+            )
+        },
+        |metrics| (Status::Ok, metrics),
+    )
+}
+
+async fn wait_for_metrics(
+    mut join_set: JoinSet<Result<anyhow::Result<Weather>, JoinError>>,
+) -> anyhow::Result<String> {
+    let mut weather = vec![];
+
+    while let Some(result) = join_set.join_next().await {
+        weather.push(result???);
+    }
+
+    format(weather)
+}
 
 #[derive(Responder, Debug, PartialEq, Eq)]
 #[response(content_type = "text/plain")]
