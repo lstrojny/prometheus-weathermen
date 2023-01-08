@@ -8,8 +8,6 @@ keywords = ["prometheus", "prometheus-exporter", "weather", "monitoring"]
 categories = ["command-line-utilities"]
 repository = "https://github.com/lstrojny/prometheus-weathermen"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 rocket = "0.5.0-rc.2"
 reqwest = { version = "0.11.13", features = ["json", "blocking"] }
@@ -22,12 +20,12 @@ serde_json = "1.0.91"
 moka = "0.9.6"
 humantime-serde = "1.1.1"
 anyhow = "1.0.68"
-log = { version = "0.4.17", default-features = false, features = ["serde"] }
-stderrlog = { version = "0.5.4", default-features = false, features = ["timestamps"] }
+log = { version = "0.4.17", features = ["serde"] }
+stderrlog = { version = "0.5.4", features = ["timestamps"] }
 tokio = { version = "1.24.1", default-features = false }
 clap = { version = "4.0.32", features = ["derive"] }
 clap-verbosity-flag = "2.0.0"
 figment = { version = "0.10.8", features = ["toml", "env"] }
 prometheus-client = "0.19.0"
-rocket-basicauth = { version = "2.1.1", features = ["log"] }
+rocket-basicauth = "2.1.1"
 bcrypt = "0.13.0"
