@@ -1,0 +1,146 @@
+on: [push, pull_request]
+name: Build Pipeline
+jobs:
+  check:
+    name: Check against ${{ matrix.toolchain }} Rust
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - stable
+          - nightly
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3.3.0
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1.0.7
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+          components: rustfmt, clippy
+
+      - name: Set up cargo cache
+        uses: actions/cache@v3.2.2
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Static analysis with clippy
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: clippy
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: test
+
+      - name: Check for security issues
+        uses: actions-rs/audit-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build ${{ matrix.profile }} ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - armv7-unknown-linux-gnueabihf
+          - armv7-unknown-linux-musleabihf
+          - aarch64-unknown-linux-musl
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - mips64-unknown-linux-muslabi64
+        profile:
+          - release
+          - debug
+        toolchain:
+          - stable
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3.3.0
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1.0.7
+        with:
+          toolchain: stable
+          profile: minimal
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Set up cargo cache
+        uses: actions/cache@v3.2.2
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build ${{ matrix.profile }} binary
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          use-cross: true
+          command: build
+          args: ${{ matrix.profile == 'release' && '--release' || '' }} --target=${{ matrix.target }}
+
+      - name: Set GIT short sha
+        id: git
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get metadata
+        id: metadata
+        run: echo version=`cargo metadata --format-version=1 --no-deps | jq -r .packages[0].version`${{ startsWith(github.ref, 'refs/tags/') && '' || format('-{0}', steps.git.outputs.sha_short) }} >> $GITHUB_OUTPUT
+
+      - name: Set archive name
+        id: archive
+        run: echo archive_name=prometheus-weathermen-${{ matrix.target}}-${{ steps.metadata.outputs.version }}${{ matrix.profile == 'debug' && '-dbg' || ''}}.tar.zz >> $GITHUB_OUTPUT
+
+      - name: Create archive
+        run: tar -C target/${{ matrix.target }}/${{ matrix.profile }} -Jcvf ${{ steps.archive.outputs.archive_name }} prometheus-weathermen
+
+      - name: Upload ${{ matrix.profile }} binary
+        uses: actions/upload-artifact@v3.1.1
+        with:
+          name: ${{ steps.archive.outputs.archive_name }}
+          path: ${{ steps.archive.outputs.archive_name }}
+          if-no-files-found: error
+
+  release:
+    needs: [check, build]
+    name: Release
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@v3.0.1
+        id: download
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          fail_on_unmatched_files: true
+          # Nested because for each archive a sub-folder of the same name is create to avoid conflicts when downloading
+          files: ${{ steps.download.outputs.download-path }}/prometheus-weathermen-*.tar.zz/prometheus-weathermen-*.tar.zz
+          generate_release_notes: true
