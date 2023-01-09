@@ -2,24 +2,56 @@
 latitude = 52.508963
 longitude = 13.435965
 
+
 [location.work]
 name = "Work place" # Optional, defaults to the ID of the location, in this case "work"
 latitude = 53.508963
 longitude = 14.435965
 
-# [provider.open_weather]
-# API key for openweathermap.org, register your own
-# api_key = "XXXXX"
 
-# Configure how often weather information should be refresh. Default is 10 minutes
-# Format: 15days, 2min, 10s
-# Can be combined: 1hour 30min
+# [provider.open_weather]
+#
+# API key for openweathermap.org
+# api_key = "abcdefg"
+#
+# Refresh interval. Defaults to 10 minutes
 # refresh_interval = "10min"
+#
+# Configure how often weather information should be refreshed from this provider . Default is 10 minutes
+# Format: 15days, 2min, 10s. Can also be combined: 1hour 30min
+# refresh_interval = "10min"
+
 
 # [provider.meteoblue]
-# api_key = "XXX"
+#
+# API key for meteoblue.com
+# api_key = "abcdefg"
+#
+# Configure how often weather information should be refreshed from this provider . Default is 10 minutes
+# Format: 15days, 2min, 10s. Can also be combined: 1hour 30min
 # refresh_interval = "10min"
 
+
 # [http]
-# port = 36333 Default port
-# For all other settings check https://rocket.rs/v0.5-rc/guide/configuration/
+#
+# Configure port to listen on. Default is 3633
+# port = 36333
+#
+# For more HTTP settings check https://rocket.rs/v0.5-rc/guide/configuration/
+
+
+# [http.tls]
+#
+# Path to certificate file
+# certs = "/path/to/certificate.pem"
+#
+# Path to key file
+# key = "/path/toprivate_key.pem"
+#
+# See https://rocket.rs/v0.5-rc/guide/configuration/#tls for more
+
+
+# [auth]
+#
+# Basic auth credentials. Password hash is bcrypt
+# joanne.doe = "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna"
