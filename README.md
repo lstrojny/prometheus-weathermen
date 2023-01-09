@@ -15,3 +15,12 @@ location from each configured provider:
 ### Configuration
 
 Check [weathermen.toml.dist](weathermen.toml.dist) for configuration options.
+
+Configuration values can also be set from environment variables with the prefix `PROMW_`. For example, to set the HTTP
+port from an environment variable, use `PROMW_HTTP__PORT=12345`. The double underscore is not a typo, it is necessary
+to disambiguate hierarchy from name. Assume this TOML config:
+```toml
+[provider.open_weather]
+api_key = "XYZ"
+```
+The corresponding env variable would be `PROMW_PROVIDER__OPEN_WEATHER__API_KEY`.

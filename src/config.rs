@@ -1,7 +1,7 @@
 use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use figment::{
-    providers::{Format, Toml},
+    providers::{Env, Format, Toml},
     Figment,
 };
 use log::{debug, info, warn, Level};
@@ -87,6 +87,7 @@ pub fn read(config_file: PathBuf, log_level: Level) -> anyhow::Result<Config> {
                 Level::Error => rocket::log::LogLevel::Critical,
             },
         ))
+        .merge(Env::prefixed("PROMW_").split("__"))
         .extract()?;
 
     debug!("Read config is {:?}", config);
