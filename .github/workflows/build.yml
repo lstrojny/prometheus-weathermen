@@ -23,7 +23,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up cargo cache
-        uses: actions/cache@v3.2.2
+        uses: actions/cache@v3.2.3
         continue-on-error: false
         with:
           path: |
@@ -91,7 +91,7 @@ jobs:
           override: true
 
       - name: Set up cargo cache
-        uses: actions/cache@v3.2.2
+        uses: actions/cache@v3.2.3
         continue-on-error: false
         with:
           path: |
