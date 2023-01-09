@@ -54,7 +54,7 @@ impl WeatherProvider for Meteoblue {
             &[
                 ("lat", request.query.latitude.to_string()),
                 ("lon", request.query.longitude.to_string()),
-                ("format", "json".to_string()),
+                ("format", "json".into()),
                 ("apikey", self.api_key.clone()),
             ],
         )?;
@@ -84,7 +84,7 @@ impl WeatherProvider for Meteoblue {
         )?;
 
         Ok(Weather {
-            source: SOURCE_URI.to_string(),
+            source: SOURCE_URI.into(),
             location: request.name.clone(),
             city: if response.metadata.name.is_empty() {
                 request.name.clone()

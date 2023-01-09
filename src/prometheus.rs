@@ -35,7 +35,7 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
     for weather in weathers {
         temperature
             .get_or_create(&Labels {
-                version: VERSION.to_string(),
+                version: VERSION.into(),
                 source: weather.source,
                 location: weather.location,
                 city: weather.city,

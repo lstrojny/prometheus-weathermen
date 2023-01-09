@@ -61,7 +61,7 @@ async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, Str
             error!("Error while fetching weather data {e}");
             (
                 Status::InternalServerError,
-                "Error while fetching weather data. Check the logs".to_string(),
+                "Error while fetching weather data. Check the logs".into(),
             )
         },
         |metrics| (Status::Ok, metrics),
@@ -192,8 +192,8 @@ mod tests {
             maybe_authenticate(
                 &Some(Credentials::empty()),
                 &Some(BasicAuth {
-                    username: "joanna".to_string(),
-                    password: "secret".to_string()
+                    username: "joanna".into(),
+                    password: "secret".into()
                 })
             )
             .expect_err("Error expected")
@@ -207,12 +207,12 @@ mod tests {
             ForbiddenResponse::new(),
             maybe_authenticate(
                 &Some(Credentials::from([(
-                    "joanna".to_string(),
-                    "$2a$12$KR9glOH.QnpZ8TTZzkRFfO2GejbHoPFyBtViBgPWND764MQy735Q6".to_string()
+                    "joanna".into(),
+                    "$2a$12$KR9glOH.QnpZ8TTZzkRFfO2GejbHoPFyBtViBgPWND764MQy735Q6".into()
                 )])),
                 &Some(BasicAuth {
-                    username: "joanna".to_string(),
-                    password: "incorrect".to_string()
+                    username: "joanna".into(),
+                    password: "incorrect".into()
                 })
             )
             .expect_err("Error expected")
@@ -226,12 +226,12 @@ mod tests {
             true,
             maybe_authenticate(
                 &Some(Credentials::from([(
-                    "joanna".to_string(),
-                    "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna".to_string()
+                    "joanna".into(),
+                    "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna".into()
                 )])),
                 &Some(BasicAuth {
-                    username: "joanna".to_string(),
-                    password: "secret".to_string()
+                    username: "joanna".into(),
+                    password: "secret".into()
                 })
             )
             .expect("Expect result")
