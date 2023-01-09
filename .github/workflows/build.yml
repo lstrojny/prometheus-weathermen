@@ -56,23 +56,22 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    name: Build ${{ matrix.profile }} ${{ matrix.target }}
+    name: ${{ matrix.profile == 'debug' && 'Debug build' || 'Build' }} ${{ matrix.desc }} (${{ matrix.target }})
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - armv7-unknown-linux-gnueabihf
-          - armv7-unknown-linux-musleabihf
-          - aarch64-unknown-linux-musl
-          - aarch64-unknown-linux-gnu
-          - x86_64-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
-        profile:
-          - release
-          - debug
-        toolchain:
-          - stable
-    runs-on: ubuntu-22.04
+        profile: [release, debug]
+        toolchain: [stable]
+        include:
+          - { desc: 'arm-mac',                target: aarch64-apple-darwin,               host: macos-12 }
+          - { desc: 'intel-mac',              target: x86_64-apple-darwin,                host: macos-12 }
+          - { desc: 'arm-linux',              target: armv7-unknown-linux-gnueabihf,      host: ubuntu-22.04 }
+          - { desc: 'arm-linux-static',       target: armv7-unknown-linux-musleabihf,     host: ubuntu-22.04 }
+          - { desc: 'arm64-linux',            target: aarch64-unknown-linux-gnu,          host: ubuntu-22.04 }
+          - { desc: 'arm64-linux-static',     target: aarch64-unknown-linux-musl,         host: ubuntu-22.04 }
+          - { desc: 'x86_64-linux',           target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04 }
+          - { desc: 'x86_64-linux-static',    target: x86_64-unknown-linux-musl,          host: ubuntu-22.04 }
+    runs-on: ${{ matrix.host }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
@@ -114,7 +113,7 @@ jobs:
 
       - name: Set archive name
         id: archive
-        run: echo archive_name=prometheus-weathermen-${{ matrix.target}}-${{ steps.metadata.outputs.version }}${{ matrix.profile == 'debug' && '-dbg' || ''}}.tar.zz >> $GITHUB_OUTPUT
+        run: echo archive_name=prometheus-weathermen-${{ steps.metadata.outputs.version }}-${{ matrix.desc}}${{ matrix.profile == 'debug' && '-dbg' || ''}}.tar.zz >> $GITHUB_OUTPUT
 
       - name: Create archive
         run: tar -C target/${{ matrix.target }}/${{ matrix.profile }} -Jcvf ${{ steps.archive.outputs.archive_name }} prometheus-weathermen
