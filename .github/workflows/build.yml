@@ -121,7 +121,7 @@ jobs:
         run: tar -C target/${{ matrix.target }}/${{ matrix.profile }} -Jcvf ${{ steps.archive.outputs.archive_name }} prometheus-weathermen
 
       - name: Upload ${{ matrix.profile }} binary
-        uses: actions/upload-artifact@v3.1.1
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: ${{ steps.archive.outputs.archive_name }}
           path: ${{ steps.archive.outputs.archive_name }}
