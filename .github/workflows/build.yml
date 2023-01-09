@@ -2,14 +2,14 @@ on: [push, pull_request]
 name: Build Pipeline
 jobs:
   check:
-    name: Check against ${{ matrix.toolchain }} Rust
+    name: Check on ${{ matrix.host }} against ${{ matrix.toolchain }} Rust
     strategy:
       fail-fast: false
       matrix:
-        toolchain:
-          - stable
-          - nightly
-    runs-on: ubuntu-22.04
+        include:
+          - { toolchain: stable, host: ubuntu-22.04 }
+          - { toolchain: nightly, host: macos-12 }
+    runs-on: ${{ matrix.host }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v3.3.0

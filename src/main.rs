@@ -10,13 +10,14 @@ extern crate core;
 use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};
 use crate::http::{index, metrics};
 use clap::{arg, command, Parser};
-use log::{debug, error};
+use log::{error, Level};
 use rocket::{launch, routes};
 use std::path::PathBuf;
 use std::process::exit;
 
 mod config;
 mod http;
+mod logging;
 mod prometheus;
 mod providers;
 
@@ -26,8 +27,8 @@ pub struct DebugLevel;
 
 #[cfg(debug_assertions)]
 impl clap_verbosity_flag::LogLevel for DebugLevel {
-    fn default() -> Option<log::Level> {
-        Some(log::Level::Debug)
+    fn default() -> Option<Level> {
+        Some(Level::Debug)
     }
 }
 
@@ -52,15 +53,12 @@ struct Args {
 fn rocket() -> _ {
     let args = Args::parse();
 
-    let log_level = args.verbose.log_level().unwrap();
+    let log_level = args
+        .verbose
+        .log_level()
+        .expect("Log level cannot be not available");
 
-    stderrlog::new()
-        .verbosity(log_level)
-        .timestamp(stderrlog::Timestamp::Millisecond)
-        .init()
-        .unwrap();
-
-    debug!("Configured logger with level {log_level:?}");
+    logging::init(log_level).expect("Logging successfully initialied");
 
     let config = read(args.config, log_level).unwrap_or_else(|e| {
         error!("Fatal error: {e}");

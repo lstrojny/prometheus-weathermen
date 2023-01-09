@@ -1,0 +1,13 @@
+# Use edge image for GNU abi targets to get Ubuntu 20.x with a glibc fresh enough to have the memfd_create() symbol
+# included. Fixes this build error:
+# In function `_$LT$systemd_journal_logger..JournalLog$LT$K$C$V$GT$$u20$as$u20$log..Log$GT$::log::h08cae52c49d7e9dd':
+# prometheus_weathermen.338ceaff-cgu.0:(.text._ZN76_$LT$systemd_journal_logger..JournalLog$LT$K$C$V$GT$$u20$as$u20$log..Log$GT$3log17h08cae52c49d7e9ddE+0x1758):
+# undefined reference to `memfd_create' collect2: error: ld returned 1 exit status
+[target.x86_64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:edge"
+
+[target.aarch64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge"
+
+[target.armv7-unknown-linux-gnueabihf]
+image = "ghcr.io/cross-rs/armv7-unknown-linux-gnueabihf:edge"
