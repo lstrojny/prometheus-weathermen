@@ -14,7 +14,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
 
-      - name: Install nightly toolchain
+      - name: Install ${{ matrix.toolchain }} toolchain
         uses: actions-rs/toolchain@v1.0.7
         with:
           profile: minimal
@@ -82,7 +82,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
 
-      - name: Install stable toolchain
+      - name: Install ${{ matrix.toolchain }} toolchain
         uses: actions-rs/toolchain@v1.0.7
         with:
           toolchain: stable
