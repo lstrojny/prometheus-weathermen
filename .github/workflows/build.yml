@@ -67,7 +67,6 @@ jobs:
           - aarch64-unknown-linux-gnu
           - x86_64-unknown-linux-gnu
           - x86_64-unknown-linux-musl
-          - mips64-unknown-linux-muslabi64
         profile:
           - release
           - debug
