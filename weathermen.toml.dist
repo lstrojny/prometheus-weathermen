@@ -32,6 +32,21 @@ longitude = 14.435965
 # refresh_interval = "10min"
 
 
+# [provider.tomorrow]
+#
+# API key for tomorrow.io
+# api_key = "abcdefg"
+#
+# Configure how often weather information should be refreshed from this provider . Default is 10 minutes
+# Format: 15days, 2min, 10s. Can also be combined: 1hour 30min
+# refresh_interval = "10min"
+
+
+# [provider.nogoodnik]
+#
+# A provider that always fails (for robustness testing)
+
+
 # [http]
 #
 # Configure port to listen on. Default is 3633

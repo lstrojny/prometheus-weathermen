@@ -12,6 +12,14 @@ location from each configured provider:
 -   `weather_temperature_celsius`
 -   `weather_relative_humidity_ratio`
 
+### Supported providers
+
+The following services are implemented as providers. Each configured provider is queries for weather information.
+
+-   [Meteoblue](https://www.meteoblue.com/)
+-   [OpenWeather](https://openweathermap.org/)
+-   [tomorrow.io](https://www.tomorrow.io/)
+
 ### Configuration
 
 Check [weathermen.toml.dist](weathermen.toml.dist) for configuration options.
