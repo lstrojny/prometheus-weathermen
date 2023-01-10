@@ -17,7 +17,7 @@ const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
-pub fn reqwest_cached_body_json<T: DeserializeOwned>(
+pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
     source: &str,
     cache: &Cache<String, String>,
     client: &Client,
@@ -29,6 +29,8 @@ pub fn reqwest_cached_body_json<T: DeserializeOwned>(
     trace!("Parsing {source:?} response body {body:?}");
 
     let response = serde_json::from_str::<T>(&body)?;
+
+    trace!("Response body parsed {response:?}");
 
     Ok(response)
 }

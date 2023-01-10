@@ -21,19 +21,19 @@ pub struct Meteoblue {
 const SOURCE_URI: &str = "com.meteoblue";
 const ENDPOINT_URL: &str = "https://my.meteoblue.com/packages/current";
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct MeteoblueResponseMetadata {
     name: String,
     #[serde(flatten)]
     coordinates: Coordinates,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct MeteoblueResponseDataCurrent {
     temperature: Celsius,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct MeteoblueResponse {
     metadata: MeteoblueResponseMetadata,
     data_current: MeteoblueResponseDataCurrent,

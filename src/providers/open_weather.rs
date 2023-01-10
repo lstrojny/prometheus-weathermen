@@ -18,13 +18,13 @@ pub struct OpenWeather {
     pub cache: Configuration,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct OpenWeatherResponseMain {
     temp: Kelvin,
     humidity: Ratio,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct OpenWeatherResponse {
     coord: Coordinates,
     name: String,

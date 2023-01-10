@@ -1,10 +1,12 @@
 mod cache;
 mod meteoblue;
 mod open_weather;
+mod tomorrow;
 pub mod units;
 
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::open_weather::OpenWeather;
+use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Ratio};
 use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
@@ -17,6 +19,7 @@ use std::vec::IntoIter;
 pub struct Providers {
     open_weather: Option<OpenWeather>,
     meteoblue: Option<Meteoblue>,
+    tomorrow: Option<Tomorrow>,
 }
 
 impl IntoIterator for Providers {
@@ -31,6 +34,10 @@ impl IntoIterator for Providers {
         }
 
         if let Some(provider) = self.meteoblue {
+            vec.push(Arc::new(provider));
+        }
+
+        if let Some(provider) = self.tomorrow {
             vec.push(Arc::new(provider));
         }
 

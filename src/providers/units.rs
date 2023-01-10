@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::fmt::Debug;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 pub struct Kelvin(f32);
 
 impl From<f32> for Kelvin {
@@ -17,7 +17,7 @@ impl ToCelsius for Kelvin {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 pub struct Celsius(f32);
 
 impl From<f32> for Celsius {
@@ -38,7 +38,7 @@ impl ToCelsius for Celsius {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 pub struct Fahrenheit(f32);
 
 pub trait ToCelsius {
@@ -57,7 +57,7 @@ impl ToCelsius for Fahrenheit {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 #[serde(untagged)]
 pub enum Ratio {
     Percentage(u16),
