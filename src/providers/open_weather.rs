@@ -1,5 +1,5 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
-use crate::providers::units::{Kelvin, ToCelsius};
+use crate::providers::units::{Kelvin, Ratio, ToCelsius};
 use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
 use moka::sync::Cache;
 use reqwest::{Method, Url};
@@ -21,6 +21,7 @@ pub struct OpenWeather {
 #[derive(Deserialize)]
 struct OpenWeatherResponseMain {
     temp: Kelvin,
+    humidity: Ratio,
 }
 
 #[derive(Deserialize)]
@@ -64,6 +65,7 @@ impl WeatherProvider for OpenWeather {
             location: request.name.clone(),
             city: response.name,
             temperature: response.main.temp.to_celsius(),
+            relative_humidity: Some(response.main.humidity),
             coordinates: response.coord,
         })
     }

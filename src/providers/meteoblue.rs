@@ -92,6 +92,7 @@ impl WeatherProvider for Meteoblue {
                 response.metadata.name
             },
             temperature: response.data_current.temperature,
+            relative_humidity: None,
             coordinates: response.metadata.coordinates,
         })
     }

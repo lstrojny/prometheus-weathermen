@@ -58,7 +58,7 @@ async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, Str
 
     wait_for_metrics(join_set).await.map_or_else(
         |e| {
-            error!("Error while fetching weather data {e}");
+            error!("Error while fetching weather data: {e}");
             (
                 Status::InternalServerError,
                 "Error while fetching weather data. Check the logs".into(),

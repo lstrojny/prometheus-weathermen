@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, trace};
 use moka::sync::Cache;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
@@ -25,6 +25,9 @@ pub fn reqwest_cached_body_json<T: DeserializeOwned>(
     url: Url,
 ) -> anyhow::Result<T> {
     let body = reqwest_cached_body(source, cache, client, method, url)?;
+
+    trace!("Parsing {source:?} response body {body:?}");
+
     let response = serde_json::from_str::<T>(&body)?;
 
     Ok(response)

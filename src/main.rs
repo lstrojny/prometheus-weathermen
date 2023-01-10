@@ -5,12 +5,11 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::cargo_common_metadata)]
 #![allow(clippy::no_effect_underscore_binding)]
-extern crate core;
 
 use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};
 use crate::http::{index, metrics};
 use clap::{arg, command, Parser};
-use log::{error, Level};
+use log::error;
 use rocket::{launch, routes};
 use std::path::PathBuf;
 use std::process::exit;
@@ -27,8 +26,8 @@ pub struct DebugLevel;
 
 #[cfg(debug_assertions)]
 impl clap_verbosity_flag::LogLevel for DebugLevel {
-    fn default() -> Option<Level> {
-        Some(Level::Debug)
+    fn default() -> Option<log::Level> {
+        Some(log::Level::Debug)
     }
 }
 
