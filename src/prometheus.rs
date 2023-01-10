@@ -35,7 +35,7 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
     let mut humidity_registered = false;
 
     for weather in weathers {
-        let labels = &Labels {
+        let labels = Labels {
             version: VERSION.into(),
             source: weather.source,
             location: weather.location,
@@ -45,7 +45,7 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
         };
 
         temperature
-            .get_or_create(labels)
+            .get_or_create(&labels)
             .set(weather.temperature.into());
 
         weather.relative_humidity.map(|rh| {
@@ -59,7 +59,7 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
                 humidity_registered = true;
             }
 
-            humidity.get_or_create(labels).set(rh.as_f64())
+            humidity.get_or_create(&labels).set(rh.as_f64())
         });
     }
 
@@ -137,7 +137,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
     }
 
     #[test]
-    #[ignore] // Sort of metrics is not deterministic
+    #[ignore] // Sort order of metrics is not deterministic
     fn format_multiple() {
         assert_str_eq!(
             format!(
