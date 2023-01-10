@@ -1,10 +1,12 @@
 mod cache;
 mod meteoblue;
+mod nogoodnik;
 mod open_weather;
 mod tomorrow;
 pub mod units;
 
 use crate::providers::meteoblue::Meteoblue;
+use crate::providers::nogoodnik::Nogoodnik;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Ratio};
@@ -20,6 +22,7 @@ pub struct Providers {
     open_weather: Option<OpenWeather>,
     meteoblue: Option<Meteoblue>,
     tomorrow: Option<Tomorrow>,
+    nogoodnik: Option<Nogoodnik>,
 }
 
 impl IntoIterator for Providers {
@@ -38,6 +41,10 @@ impl IntoIterator for Providers {
         }
 
         if let Some(provider) = self.tomorrow {
+            vec.push(Arc::new(provider));
+        }
+
+        if let Some(provider) = self.nogoodnik {
             vec.push(Arc::new(provider));
         }
 

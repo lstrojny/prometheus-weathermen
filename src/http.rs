@@ -5,7 +5,7 @@ use rocket::http::{Header, Status};
 use rocket::{get, Either, Responder, State};
 use rocket_basicauth::BasicAuth;
 
-use crate::config::Credentials;
+use crate::config::CredentialsStore;
 use crate::config::ProviderTasks;
 
 use crate::prometheus::format;
@@ -17,24 +17,24 @@ use tokio::task::JoinError;
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
 pub fn index(
-    credentials: &State<Option<Credentials>>,
-    auth: Option<BasicAuth>,
+    credentials_store: &State<Option<CredentialsStore>>,
+    credentials_presented: Option<BasicAuth>,
 ) -> Result<(Status, &'static str), Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials, &auth) {
+    match maybe_authenticate(credentials_store, &credentials_presented) {
         Ok(_) => Ok((Status::NotFound, "Check /metrics")),
-        Err(e) => Err(e),
+        Err(e) => auth_error_to_response(&e),
     }
 }
 
 #[get("/metrics")]
 pub async fn metrics(
     unscheduled_tasks: &State<ProviderTasks>,
-    credentials: &State<Option<Credentials>>,
-    auth: Option<BasicAuth>,
+    credentials_store: &State<Option<CredentialsStore>>,
+    credentials_presented: Option<BasicAuth>,
 ) -> Result<(Status, String), Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials, &auth) {
+    match maybe_authenticate(credentials_store, &credentials_presented) {
         Ok(_) => Ok(serve_metrics(unscheduled_tasks).await),
-        Err(e) => Err(e),
+        Err(e) => auth_error_to_response(&e),
     }
 }
 
@@ -42,23 +42,21 @@ async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, Str
     let mut join_set = JoinSet::new();
 
     #[allow(clippy::unnecessary_to_owned)]
-    for (provider, req, cache) in unscheduled_tasks.to_vec() {
-        let prov_req = req.clone();
-        let task_cache = cache.clone();
+    for task in unscheduled_tasks.to_vec() {
         join_set.spawn(task::spawn_blocking(move || {
             info!(
                 "Requesting weather data for {:?} from {:?} ({:?})",
-                prov_req.name,
-                provider.id(),
-                prov_req.query,
+                task.request.name,
+                task.provider.id(),
+                task.request.query,
             );
-            provider.for_coordinates(&task_cache, &prov_req)
+            task.provider.for_coordinates(&task.cache, &task.request)
         }));
     }
 
     wait_for_metrics(join_set).await.map_or_else(
         |e| {
-            error!("Error while fetching weather data: {e}");
+            error!("General error while fetching weather data: {e}");
             (
                 Status::InternalServerError,
                 "Error while fetching weather data. Check the logs".into(),
@@ -74,10 +72,22 @@ async fn wait_for_metrics(
     let mut weather = vec![];
 
     while let Some(result) = join_set.join_next().await {
-        weather.push(result???);
+        result??.map_or_else(
+            |e| error!("Provider error while fetching weather data: {e}"),
+            |w| weather.push(w),
+        );
     }
 
     format(weather)
+}
+
+fn auth_error_to_response<T>(
+    error: &Denied,
+) -> Result<T, Either<UnauthorizedResponse, ForbiddenResponse>> {
+    match error {
+        Denied::Unauthorized => Err(Either::Left(UnauthorizedResponse::new())),
+        Denied::Forbidden => Err(Either::Right(ForbiddenResponse::new())),
+    }
 }
 
 #[derive(Responder, Debug, PartialEq, Eq)]
@@ -116,26 +126,43 @@ impl ForbiddenResponse {
     }
 }
 
-pub fn maybe_authenticate(
-    credentials: &Option<Credentials>,
-    auth: &Option<BasicAuth>,
-) -> Result<bool, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    if credentials.is_none() {
-        trace!("No authentication required");
-        return Ok(false);
-    }
-
-    if auth.is_none() {
-        return Err(Either::Left(UnauthorizedResponse::new()));
-    }
-
-    authenticate(credentials.as_ref().unwrap(), auth.as_ref().unwrap())
+#[derive(Debug, PartialEq, Eq)]
+pub enum Granted {
+    NotRequired,
+    Succeeded,
 }
 
-fn authenticate(
-    credentials: &Credentials,
-    auth: &BasicAuth,
-) -> Result<bool, Either<UnauthorizedResponse, ForbiddenResponse>> {
+#[derive(Debug, PartialEq, Eq)]
+pub enum Denied {
+    Unauthorized,
+    Forbidden,
+}
+
+pub fn maybe_authenticate(
+    credentials_store: &Option<CredentialsStore>,
+    credentials_presented: &Option<BasicAuth>,
+) -> Result<Granted, Denied> {
+    if credentials_store.is_none() {
+        trace!("No credentials store configured, authentication required");
+        return Ok(Granted::NotRequired);
+    }
+
+    if credentials_presented.is_none() {
+        trace!("No credentials presented. Unauthorized");
+        return Err(Denied::Unauthorized);
+    }
+
+    authenticate(
+        credentials_store
+            .as_ref()
+            .expect("Credentials have been checked previously"),
+        credentials_presented
+            .as_ref()
+            .expect("Authentication data has been checked previously"),
+    )
+}
+
+fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Granted, Denied> {
     for (username, hash) in credentials.0.clone() {
         if username != auth.username {
             continue;
@@ -145,68 +172,61 @@ fn authenticate(
             Ok(r) => {
                 if r {
                     debug!("Username {username:?} successfully authenticated");
-                    Ok(true)
+                    Ok(Granted::Succeeded)
                 } else {
                     debug!("Invalid password for {username:?}");
-                    Err(Either::Right(ForbiddenResponse::new()))
+                    Err(Denied::Forbidden)
                 }
             }
             Err(e) => {
                 error!("Error verifying bcrypt hash for {username:?}: {e:?}");
-                Err(Either::Right(ForbiddenResponse::new()))
+                Err(Denied::Forbidden)
             }
         };
     }
 
-    Err(Either::Right(ForbiddenResponse::new()))
+    Err(Denied::Forbidden)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::Credentials;
-    use crate::http::{maybe_authenticate, ForbiddenResponse, UnauthorizedResponse};
+    use crate::config::CredentialsStore;
+    use crate::http::{maybe_authenticate, Denied, Granted};
     use rocket_basicauth::BasicAuth;
 
     #[test]
     fn false_if_no_authentication_required() {
-        assert_eq!(
-            false,
-            maybe_authenticate(&None, &None).expect("Expect result")
-        )
+        assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None))
     }
 
     #[test]
     fn unauthorized_if_no_auth_information_provided() {
         assert_eq!(
-            UnauthorizedResponse::new(),
-            maybe_authenticate(&Some(Credentials::empty()), &None)
-                .expect_err("Error expected")
-                .expect_left("Unauthorized response expected")
+            Err(Denied::Unauthorized),
+            maybe_authenticate(&Some(CredentialsStore::empty()), &None)
         );
     }
 
     #[test]
     fn forbidden_if_username_not_found() {
         assert_eq!(
-            ForbiddenResponse::new(),
+            Err(Denied::Forbidden),
             maybe_authenticate(
-                &Some(Credentials::empty()),
+                &Some(CredentialsStore::empty()),
                 &Some(BasicAuth {
                     username: "joanna".into(),
                     password: "secret".into()
                 })
             )
-            .expect_err("Error expected")
-            .expect_right("Forbidden response expected")
         );
     }
 
     #[test]
     fn forbidden_if_incorrect_password() {
         assert_eq!(
-            ForbiddenResponse::new(),
+            Err(Denied::Forbidden),
             maybe_authenticate(
-                &Some(Credentials::from([(
+                &Some(CredentialsStore::from([(
                     "joanna".into(),
                     "$2a$12$KR9glOH.QnpZ8TTZzkRFfO2GejbHoPFyBtViBgPWND764MQy735Q6".into()
                 )])),
@@ -215,17 +235,15 @@ mod tests {
                     password: "incorrect".into()
                 })
             )
-            .expect_err("Error expected")
-            .expect_right("Forbidden response expected")
         );
     }
 
     #[test]
     fn unit_if_authentication_successful() {
         assert_eq!(
-            true,
+            Ok(Granted::Succeeded),
             maybe_authenticate(
-                &Some(Credentials::from([(
+                &Some(CredentialsStore::from([(
                     "joanna".into(),
                     "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna".into()
                 )])),
@@ -234,7 +252,6 @@ mod tests {
                     password: "secret".into()
                 })
             )
-            .expect("Expect result")
         );
     }
 }

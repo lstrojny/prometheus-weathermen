@@ -35,20 +35,20 @@ pub struct Config {
     #[serde(rename = "provider")]
     pub providers: Option<Providers>,
     pub http: rocket::Config,
-    pub auth: Option<Credentials>,
+    pub auth: Option<CredentialsStore>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Credentials(pub HashMap<String, String>);
+pub struct CredentialsStore(pub HashMap<String, String>);
 
-impl<const N: usize> From<[(String, String); N]> for Credentials {
+impl<const N: usize> From<[(String, String); N]> for CredentialsStore {
     fn from(arr: [(String, String); N]) -> Self {
         Self(HashMap::from(arr))
     }
 }
 
 #[cfg(test)]
-impl Credentials {
+impl CredentialsStore {
     pub fn empty() -> Self {
         Self(HashMap::new())
     }
@@ -95,11 +95,14 @@ pub fn read(config_file: PathBuf, log_level: Level) -> anyhow::Result<Config> {
     Ok(config)
 }
 
-pub type ProviderTasks = Vec<(
-    Arc<dyn WeatherProvider + Send + Sync>,
-    WeatherRequest<Coordinates>,
-    Cache<String, String>,
-)>;
+pub type ProviderTasks = Vec<Task>;
+
+#[derive(Clone)]
+pub struct Task {
+    pub provider: Arc<dyn WeatherProvider + Send + Sync>,
+    pub request: WeatherRequest<Coordinates>,
+    pub cache: Cache<String, String>,
+}
 
 pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
     let configured_providers = config
@@ -124,15 +127,14 @@ pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
 
         let locations = config.locations.clone();
         for (name, location) in locations {
-            let configured_provider_for_task = configured_provider.clone();
-            tasks.push((
-                configured_provider_for_task,
-                WeatherRequest {
+            tasks.push(Task {
+                provider: configured_provider.clone(),
+                request: WeatherRequest {
                     name: location.name.unwrap_or(name),
                     query: location.coordinates,
                 },
-                cache.clone(),
-            ));
+                cache: cache.clone(),
+            });
         }
     }
 
