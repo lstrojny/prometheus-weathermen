@@ -44,6 +44,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2cb2f989d18dd141ab8ae82f64d1a8cdd37e0840f73a406896cf5e99502fab61"
 
 [[package]]
+name = "assert-str"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6eff46575e86b852295e41df8599e94a910b1136c6af2821df9925f3cf8a1389"
+
+[[package]]
 name = "async-stream"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1390,6 +1396,7 @@ name = "prometheus-weathermen"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "assert-str",
  "bcrypt",
  "clap",
  "clap-verbosity-flag",

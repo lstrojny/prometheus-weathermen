@@ -47,6 +47,12 @@ impl Display for Coordinate {
     }
 }
 
+impl From<f32> for Coordinate {
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coordinates {
     #[serde(alias = "lat")]
