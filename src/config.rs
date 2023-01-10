@@ -1,4 +1,5 @@
-use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
+use crate::providers::units::Coordinates;
+use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use figment::{
     providers::{Env, Format, Toml},

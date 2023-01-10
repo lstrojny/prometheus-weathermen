@@ -1,6 +1,6 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
-use crate::providers::units::{Celsius, Ratio};
-use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::units::{Celsius, Coordinates, Ratio};
+use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use moka::sync::Cache;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};

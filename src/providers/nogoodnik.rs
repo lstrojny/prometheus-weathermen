@@ -1,4 +1,5 @@
-use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::units::Coordinates;
+use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::format_err;
 use moka::sync::Cache;
 use rocket::serde::Serialize;

@@ -73,9 +73,9 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
 #[cfg(test)]
 mod tests {
     use crate::prometheus::format;
-    use crate::providers::units::Celsius;
     use crate::providers::units::Ratio::Ratio;
-    use crate::providers::{Coordinate, Coordinates, Weather};
+    use crate::providers::units::{Celsius, Coordinate, Coordinates};
+    use crate::providers::Weather;
     use assert_str::assert_str_eq;
 
     #[test]

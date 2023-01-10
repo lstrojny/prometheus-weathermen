@@ -12,10 +12,10 @@ use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Ratio};
 use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use std::time::Duration;
 use std::vec::IntoIter;
+use units::Coordinates;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Providers {
@@ -50,29 +50,6 @@ impl IntoIterator for Providers {
 
         IntoIter::into_iter(vec.into_iter())
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coordinate(f32);
-impl Display for Coordinate {
-    // Standardize 7 digits for coordinates and that should be plenty
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.7}", self.0)
-    }
-}
-
-impl From<f32> for Coordinate {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coordinates {
-    #[serde(alias = "lat")]
-    pub latitude: Coordinate,
-    #[serde(alias = "lon")]
-    pub longitude: Coordinate,
 }
 
 #[derive(Debug)]

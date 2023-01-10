@@ -1,6 +1,6 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
-use crate::providers::units::{Kelvin, Ratio, ToCelsius};
-use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::units::{Coordinates, Kelvin, Ratio, ToCelsius};
+use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use moka::sync::Cache;
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;

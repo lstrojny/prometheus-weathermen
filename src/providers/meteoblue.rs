@@ -1,6 +1,6 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
-use crate::providers::units::Celsius;
-use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::units::{Celsius, Coordinates};
+use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use hmac::{Hmac, Mac};
 use moka::sync::Cache;
