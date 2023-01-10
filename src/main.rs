@@ -5,7 +5,6 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::cargo_common_metadata)]
 #![allow(clippy::no_effect_underscore_binding)]
-extern crate core;
 
 use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};
 use crate::http::{index, metrics};

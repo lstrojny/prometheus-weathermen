@@ -24,7 +24,6 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
     let mut registry = <prometheus_client::registry::Registry>::default();
 
     let temperature = Family::<Labels, Gauge<f64, AtomicU64>>::default();
-
     registry.register_with_unit(
         "weather_temperature",
         format!("{NAME} temperature"),
@@ -32,17 +31,31 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
         temperature.clone(),
     );
 
+    let humidity = Family::<Labels, Gauge<f64, AtomicU64>>::default();
+    registry.register_with_unit(
+        "weather_relative_humidity",
+        format!("{NAME} relative humidity"),
+        Unit::Ratios,
+        humidity.clone(),
+    );
+
     for weather in weathers {
+        let labels = &Labels {
+            version: VERSION.into(),
+            source: weather.source,
+            location: weather.location,
+            city: weather.city,
+            latitude: weather.coordinates.latitude.to_string(),
+            longitude: weather.coordinates.longitude.to_string(),
+        };
+
         temperature
-            .get_or_create(&Labels {
-                version: VERSION.into(),
-                source: weather.source,
-                location: weather.location,
-                city: weather.city,
-                latitude: weather.coordinates.latitude.to_string(),
-                longitude: weather.coordinates.longitude.to_string(),
-            })
-            .set(f64::from(weather.temperature.to_f32()));
+            .get_or_create(labels)
+            .set(weather.temperature.into());
+
+        weather
+            .relative_humidity
+            .map(|rh| humidity.get_or_create(labels).set(rh.as_f64()));
     }
 
     let mut buffer = String::new();

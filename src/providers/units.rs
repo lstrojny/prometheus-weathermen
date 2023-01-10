@@ -1,14 +1,40 @@
 use serde::Deserialize;
+use std::fmt::Debug;
 
 #[derive(Deserialize, Debug)]
 pub struct Kelvin(f32);
 
+impl From<f32> for Kelvin {
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+const ABSOLUTE_ZERO_IN_CELSIUS: f32 = 273.15;
+impl ToCelsius for Kelvin {
+    fn to_celsius(&self) -> Celsius {
+        Celsius(self.0 - ABSOLUTE_ZERO_IN_CELSIUS)
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Celsius(f32);
 
-impl Celsius {
-    pub(crate) const fn to_f32(&self) -> f32 {
-        self.0
+impl From<f32> for Celsius {
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Celsius> for f64 {
+    fn from(value: Celsius) -> Self {
+        Self::from(value.0)
+    }
+}
+
+impl ToCelsius for Celsius {
+    fn to_celsius(&self) -> Self {
+        Self(self.0)
     }
 }
 
@@ -19,10 +45,9 @@ pub trait ToCelsius {
     fn to_celsius(&self) -> Celsius;
 }
 
-const ABSOLUTE_ZERO_IN_CELSIUS: f32 = 273.15;
-impl ToCelsius for Kelvin {
-    fn to_celsius(&self) -> Celsius {
-        Celsius(self.0 - ABSOLUTE_ZERO_IN_CELSIUS)
+impl From<f32> for Fahrenheit {
+    fn from(value: f32) -> Self {
+        Self(value)
     }
 }
 
@@ -32,8 +57,18 @@ impl ToCelsius for Fahrenheit {
     }
 }
 
-impl ToCelsius for Celsius {
-    fn to_celsius(&self) -> Self {
-        Self(self.0)
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Ratio {
+    Percentage(u16),
+    Ratio(f64),
+}
+
+impl Ratio {
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            Self::Ratio(v) => *v,
+            Self::Percentage(v) => f64::from(*v) / 100.0,
+        }
     }
 }

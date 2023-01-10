@@ -1,11 +1,11 @@
 mod cache;
 mod meteoblue;
-pub mod open_weather;
-mod units;
+mod open_weather;
+pub mod units;
 
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::open_weather::OpenWeather;
-use crate::providers::units::Celsius;
+use crate::providers::units::{Celsius, Ratio};
 use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -61,6 +61,7 @@ pub struct Weather {
     pub source: String,
     pub city: String,
     pub temperature: Celsius,
+    pub relative_humidity: Option<Ratio>,
     pub coordinates: Coordinates,
 }
 
