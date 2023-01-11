@@ -1,7 +1,7 @@
+use crate::providers::cache::RequestBody;
 use crate::providers::units::Coordinates;
 use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::format_err;
-use moka::sync::Cache;
 use rocket::serde::Serialize;
 use serde::Deserialize;
 use std::time::Duration;
@@ -18,7 +18,7 @@ impl WeatherProvider for Nogoodnik {
 
     fn for_coordinates(
         &self,
-        _cache: &Cache<String, String>,
+        _cache: &RequestBody,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         Err(format_err!("This provider is no good and always fails"))

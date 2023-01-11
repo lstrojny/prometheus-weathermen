@@ -1,3 +1,4 @@
+use crate::providers::cache::RequestBody;
 use crate::providers::units::Coordinates;
 use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
@@ -6,7 +7,6 @@ use figment::{
     Figment,
 };
 use log::{debug, info, warn, Level};
-use moka::sync::Cache;
 use rocket::config::Ident;
 use rocket::figment::providers::Serialized;
 use rocket::serde::Serialize;
@@ -102,7 +102,7 @@ pub type ProviderTasks = Vec<Task>;
 pub struct Task {
     pub provider: Arc<dyn WeatherProvider + Send + Sync>,
     pub request: WeatherRequest<Coordinates>,
-    pub cache: Cache<String, String>,
+    pub cache: RequestBody,
 }
 
 pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {

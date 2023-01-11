@@ -1,16 +1,18 @@
-mod cache;
+pub mod cache;
+mod dwd;
 mod meteoblue;
 mod nogoodnik;
 mod open_weather;
 mod tomorrow;
 pub mod units;
 
+use crate::providers::cache::RequestBody;
+use crate::providers::dwd::Dwd;
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::nogoodnik::Nogoodnik;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Ratio};
-use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,6 +24,7 @@ pub struct Providers {
     open_weather: Option<OpenWeather>,
     meteoblue: Option<Meteoblue>,
     tomorrow: Option<Tomorrow>,
+    dwd: Option<Dwd>,
     nogoodnik: Option<Nogoodnik>,
 }
 
@@ -41,6 +44,10 @@ impl IntoIterator for Providers {
         }
 
         if let Some(provider) = self.tomorrow {
+            vec.push(Arc::new(provider));
+        }
+
+        if let Some(provider) = self.dwd {
             vec.push(Arc::new(provider));
         }
 
@@ -73,7 +80,7 @@ pub trait WeatherProvider: std::fmt::Debug {
 
     fn for_coordinates(
         &self,
-        cache: &Cache<String, String>,
+        cache: &RequestBody,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather>;
 

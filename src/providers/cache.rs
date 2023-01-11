@@ -17,14 +17,17 @@ const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
+pub type RequestBody = Cache<(Method, Url), String>;
+
 pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
     source: &str,
-    cache: &Cache<String, String>,
+    cache: &RequestBody,
     client: &Client,
     method: Method,
     url: Url,
+    charset: Option<&str>,
 ) -> anyhow::Result<T> {
-    let body = reqwest_cached_body(source, cache, client, method, url)?;
+    let body = reqwest_cached_body(source, cache, client, method, url, charset)?;
 
     trace!("Parsing {source:?} response body {body:?}");
 
@@ -37,12 +40,13 @@ pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
 
 pub fn reqwest_cached_body(
     source: &str,
-    cache: &Cache<String, String>,
+    cache: &RequestBody,
     client: &Client,
     method: Method,
     url: Url,
+    charset: Option<&str>,
 ) -> anyhow::Result<String> {
-    let key = format!("{source} {method} {url}");
+    let key = (method.clone(), url.clone());
     let value = cache.get(&key);
 
     debug!(
@@ -60,7 +64,10 @@ pub fn reqwest_cached_body(
 
     debug!("No cache item found for \"{method:#} {url:#}\". Requesting");
 
-    let body = client.request(method, url).send()?.text()?;
+    let body = client
+        .request(method, url)
+        .send()?
+        .text_with_charset(charset.unwrap_or("utf-8"))?;
     cache.insert(key, body.clone());
 
     Ok(body)
