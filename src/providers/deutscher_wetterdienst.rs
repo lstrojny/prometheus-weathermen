@@ -100,6 +100,7 @@ fn find_closest_weather_station<'a>(
     }
 }
 
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
 fn is_measurement_file(file_name: &str) -> bool {
     file_name.starts_with("produkt_zehn_now") && file_name.ends_with(".txt")
 }
