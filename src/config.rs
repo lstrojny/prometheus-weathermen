@@ -2,6 +2,7 @@ use crate::providers::units::Coordinates;
 use crate::providers::HttpRequestBodyCache;
 use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
+use const_format::concatcp;
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -19,7 +20,7 @@ use std::time::Duration;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_CONFIG: &str = concat!("/etc/", env!("CARGO_PKG_NAME"), "/weathermen.toml");
+pub const DEFAULT_CONFIG: &str = concatcp!("/etc/", NAME, "/weathermen.toml");
 const DEFAULT_PORT: u16 = 36333;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
