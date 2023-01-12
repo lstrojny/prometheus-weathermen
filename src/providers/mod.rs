@@ -1,12 +1,12 @@
 mod cache;
-mod dwd;
+mod deutscher_wetterdienst;
 mod meteoblue;
 mod nogoodnik;
 mod open_weather;
 mod tomorrow;
 pub mod units;
 
-use crate::providers::dwd::Dwd;
+use crate::providers::deutscher_wetterdienst::DeutscherWetterdienst;
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::nogoodnik::Nogoodnik;
 use crate::providers::open_weather::OpenWeather;
@@ -23,7 +23,7 @@ pub struct Providers {
     open_weather: Option<OpenWeather>,
     meteoblue: Option<Meteoblue>,
     tomorrow: Option<Tomorrow>,
-    dwd: Option<Dwd>,
+    deutscher_wetterdienst: Option<DeutscherWetterdienst>,
     nogoodnik: Option<Nogoodnik>,
 }
 
@@ -46,7 +46,7 @@ impl IntoIterator for Providers {
             vec.push(Arc::new(provider));
         }
 
-        if let Some(provider) = self.dwd {
+        if let Some(provider) = self.deutscher_wetterdienst {
             vec.push(Arc::new(provider));
         }
 

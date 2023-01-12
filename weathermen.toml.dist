@@ -42,6 +42,11 @@ longitude = 14.435965
 # refresh_interval = "10min"
 
 
+# [provider.deutscher_wetterdienst]
+#
+# A provider using Deutscher Wetterdienst Open Data, the state run weather service in Germany
+
+
 # [provider.nogoodnik]
 #
 # A provider that always fails (for robustness testing)

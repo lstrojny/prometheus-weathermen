@@ -20,7 +20,7 @@ const BASE_URL: &str = "https://opendata.dwd.de/climate_environment/CDC/observat
 const STATION_LIST_URL: &str = concatcp!(BASE_URL, "/zehn_now_tu_Beschreibung_Stationen.txt");
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Dwd {
+pub struct DeutscherWetterdienst {
     #[serde(flatten)]
     pub cache: Configuration,
 }
@@ -187,7 +187,7 @@ fn reqwest_cached_measurement_csv(
     Ok(csv)
 }
 
-impl WeatherProvider for Dwd {
+impl WeatherProvider for DeutscherWetterdienst {
     fn id(&self) -> &str {
         SOURCE_URI
     }
@@ -241,7 +241,7 @@ impl WeatherProvider for Dwd {
 
 #[cfg(test)]
 mod tests {
-    use crate::providers::dwd::{
+    use crate::providers::deutscher_wetterdienst::{
         find_closest_weather_station, parse_weather_station_list_csv, WeatherStation,
     };
     use crate::providers::units::Coordinates;
