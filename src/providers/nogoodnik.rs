@@ -1,5 +1,5 @@
-use crate::providers::cache::RequestBody;
 use crate::providers::units::Coordinates;
+use crate::providers::HttpRequestBodyCache;
 use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::format_err;
 use rocket::serde::Serialize;
@@ -18,7 +18,7 @@ impl WeatherProvider for Nogoodnik {
 
     fn for_coordinates(
         &self,
-        _cache: &RequestBody,
+        _cache: &HttpRequestBodyCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         Err(format_err!("This provider is no good and always fails"))

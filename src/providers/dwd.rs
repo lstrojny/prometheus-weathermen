@@ -1,6 +1,6 @@
-use crate::providers::cache::{reqwest_cached_body, Configuration, RequestBody};
+use crate::providers::cache::{reqwest_cached_body, Configuration};
 use crate::providers::units::{Celsius, Coordinate, Coordinates, Ratio};
-use crate::providers::{Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use anyhow::anyhow;
 use chrono::Utc;
 use const_format::concatcp;
@@ -160,7 +160,7 @@ fn parse_measurement_data_csv(data: &String) -> Vec<Measurement> {
 }
 
 fn reqwest_cached_measurement_csv(
-    cache: &RequestBody,
+    cache: &HttpRequestBodyCache,
     client: &Client,
     station_id: &String,
 ) -> anyhow::Result<String> {
@@ -195,7 +195,7 @@ impl WeatherProvider for Dwd {
 
     fn for_coordinates(
         &self,
-        cache: &RequestBody,
+        cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         let client = Client::new();

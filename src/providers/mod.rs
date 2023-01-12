@@ -1,4 +1,4 @@
-pub mod cache;
+mod cache;
 mod dwd;
 mod meteoblue;
 mod nogoodnik;
@@ -6,7 +6,6 @@ mod open_weather;
 mod tomorrow;
 pub mod units;
 
-use crate::providers::cache::RequestBody;
 use crate::providers::dwd::Dwd;
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::nogoodnik::Nogoodnik;
@@ -80,7 +79,7 @@ pub trait WeatherProvider: std::fmt::Debug {
 
     fn for_coordinates(
         &self,
-        cache: &RequestBody,
+        cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather>;
 
@@ -89,3 +88,5 @@ pub trait WeatherProvider: std::fmt::Debug {
         1
     }
 }
+
+pub type HttpRequestBodyCache = cache::HttpRequestBody;

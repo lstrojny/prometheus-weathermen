@@ -1,3 +1,4 @@
+use crate::providers::HttpRequestBodyCache;
 use log::{debug, trace};
 use moka::sync::Cache;
 use reqwest::blocking::Client;
@@ -5,6 +6,8 @@ use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+pub type HttpRequestBody = Cache<(Method, Url), String>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -17,11 +20,9 @@ const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
-pub type RequestBody = Cache<(Method, Url), String>;
-
 pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
     source: &str,
-    cache: &RequestBody,
+    cache: &HttpRequestBodyCache,
     client: &Client,
     method: Method,
     url: Url,
@@ -40,7 +41,7 @@ pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
 
 pub fn reqwest_cached_body(
     source: &str,
-    cache: &RequestBody,
+    cache: &HttpRequestBodyCache,
     client: &Client,
     method: Method,
     url: Url,

@@ -1,5 +1,5 @@
-use crate::providers::cache::RequestBody;
 use crate::providers::units::Coordinates;
+use crate::providers::HttpRequestBodyCache;
 use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use figment::{
@@ -102,7 +102,7 @@ pub type ProviderTasks = Vec<Task>;
 pub struct Task {
     pub provider: Arc<dyn WeatherProvider + Send + Sync>,
     pub request: WeatherRequest<Coordinates>,
-    pub cache: RequestBody,
+    pub cache: HttpRequestBodyCache,
 }
 
 pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
