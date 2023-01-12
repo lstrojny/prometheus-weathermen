@@ -229,7 +229,7 @@ impl WeatherProvider for DeutscherWetterdienst {
 
         let stations = parse_weather_station_list_csv(&station_csv);
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
-        trace!("Found closest weather stations {:?}", closest_station);
+        trace!("Found closest weather station {:?}", closest_station);
         let measurement_csv =
             reqwest_cached_measurement_csv(cache, &client, &closest_station.station_id)?;
         let measurements = parse_measurement_data_csv(&measurement_csv);
