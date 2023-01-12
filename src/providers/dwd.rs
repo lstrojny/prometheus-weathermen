@@ -107,21 +107,20 @@ fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
 
 #[derive(Deserialize, Debug, Clone)]
 struct Measurement {
-    // ;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor
     #[serde(rename = "STATIONS_ID")]
-    station_id: String,
+    _station_id: String,
     #[serde(rename = "MESS_DATUM", with = "minute_precision_date_format")]
-    time: chrono::DateTime<Utc>,
+    _time: chrono::DateTime<Utc>,
     #[serde(rename = "PP_10")]
-    atmospheric_pressure: String,
+    _atmospheric_pressure: String,
     #[serde(rename = "TT_10")]
     temperature_200_centimers: Celsius,
     #[serde(rename = "TM5_10")]
-    temperature_5_centimeters: Celsius,
+    _temperature_5_centimeters: Celsius,
     #[serde(rename = "RF_10")]
     relative_humidity_200_centimeters: Ratio,
     #[serde(rename = "TD_10")]
-    dew_point_temperature_200_centimeters: Celsius,
+    _dew_point_temperature_200_centimeters: Celsius,
 }
 
 mod minute_precision_date_format {
