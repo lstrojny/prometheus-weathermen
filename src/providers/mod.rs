@@ -12,6 +12,7 @@ use crate::providers::nogoodnik::Nogoodnik;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Ratio};
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -79,6 +80,7 @@ pub trait WeatherProvider: std::fmt::Debug {
 
     fn for_coordinates(
         &self,
+        client: &Client,
         cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather>;

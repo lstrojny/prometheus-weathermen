@@ -212,11 +212,10 @@ impl WeatherProvider for DeutscherWetterdienst {
 
     fn for_coordinates(
         &self,
+        client: &Client,
         cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        let client = Client::new();
-
         let station_csv = reqwest_cached_body(
             SOURCE_URI,
             cache,

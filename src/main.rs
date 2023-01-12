@@ -13,6 +13,7 @@ use log::error;
 use rocket::{launch, routes};
 use std::path::PathBuf;
 use std::process::exit;
+use tokio::task;
 
 mod config;
 mod http;
@@ -49,7 +50,7 @@ struct Args {
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     let args = Args::parse();
 
     let log_level = args
@@ -64,10 +65,17 @@ fn rocket() -> _ {
         exit(1);
     });
 
-    let tasks = get_provider_tasks(config.clone()).unwrap_or_else(|e| {
-        error!("Fatal error: {e}");
-        exit(1);
-    });
+    let config_clone = config.clone();
+    let tasks = task::spawn_blocking(move || get_provider_tasks(config_clone))
+        .await
+        .unwrap_or_else(|e| {
+            error!("Fatal error: {e}");
+            exit(1);
+        })
+        .unwrap_or_else(|e| {
+            error!("Fatal error: {e}");
+            exit(1);
+        });
 
     rocket::custom(config.http)
         .manage(tasks)

@@ -50,7 +50,8 @@ async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, Str
                 task.provider.id(),
                 task.request.query,
             );
-            task.provider.for_coordinates(&task.cache, &task.request)
+            task.provider
+                .for_coordinates(&task.client, &task.cache, &task.request)
         }));
     }
 
