@@ -1,3 +1,4 @@
+use crate::providers::HttpRequestBodyCache;
 use log::{debug, trace};
 use moka::sync::Cache;
 use reqwest::blocking::Client;
@@ -5,6 +6,8 @@ use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+pub type HttpRequestBody = Cache<(Method, Url), String>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -19,12 +22,13 @@ const fn default_refresh_interval() -> Duration {
 
 pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
     source: &str,
-    cache: &Cache<String, String>,
+    cache: &HttpRequestBodyCache,
     client: &Client,
     method: Method,
     url: Url,
+    charset: Option<&str>,
 ) -> anyhow::Result<T> {
-    let body = reqwest_cached_body(source, cache, client, method, url)?;
+    let body = reqwest_cached_body(source, cache, client, method, url, charset)?;
 
     trace!("Parsing {source:?} response body {body:?}");
 
@@ -37,12 +41,13 @@ pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
 
 pub fn reqwest_cached_body(
     source: &str,
-    cache: &Cache<String, String>,
+    cache: &HttpRequestBodyCache,
     client: &Client,
     method: Method,
     url: Url,
+    charset: Option<&str>,
 ) -> anyhow::Result<String> {
-    let key = format!("{source} {method} {url}");
+    let key = (method.clone(), url.clone());
     let value = cache.get(&key);
 
     debug!(
@@ -60,7 +65,10 @@ pub fn reqwest_cached_body(
 
     debug!("No cache item found for \"{method:#} {url:#}\". Requesting");
 
-    let body = client.request(method, url).send()?.text()?;
+    let body = client
+        .request(method, url)
+        .send()?
+        .text_with_charset(charset.unwrap_or("utf-8"))?;
     cache.insert(key, body.clone());
 
     Ok(body)

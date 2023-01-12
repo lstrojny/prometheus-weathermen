@@ -1,7 +1,6 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
-use crate::providers::units::{Celsius, Ratio};
-use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
-use moka::sync::Cache;
+use crate::providers::units::{Celsius, Coordinates, Ratio};
+use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -49,7 +48,7 @@ impl WeatherProvider for Tomorrow {
 
     fn for_coordinates(
         &self,
-        cache: &Cache<String, String>,
+        cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         let url = Url::parse_with_params(
@@ -76,6 +75,7 @@ impl WeatherProvider for Tomorrow {
             &client,
             Method::GET,
             url,
+            None,
         )?;
 
         let values = &response

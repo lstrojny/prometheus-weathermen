@@ -1,9 +1,8 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
-use crate::providers::units::Celsius;
-use crate::providers::{Coordinates, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::units::{Celsius, Coordinates};
+use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use hmac::{Hmac, Mac};
-use moka::sync::Cache;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -46,7 +45,7 @@ impl WeatherProvider for Meteoblue {
 
     fn for_coordinates(
         &self,
-        cache: &Cache<String, String>,
+        cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         let url = Url::parse_with_params(
@@ -81,6 +80,7 @@ impl WeatherProvider for Meteoblue {
             &client,
             Method::GET,
             signed_url,
+            None,
         )?;
 
         Ok(Weather {

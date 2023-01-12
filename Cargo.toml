@@ -35,6 +35,11 @@ rocket-basicauth = "2.1.1"
 bcrypt = "0.13.0"
 openssl = { version = "0.10.45", features = ["vendored"] }
 simple_logger = { version = "4.0.0", features = ["timestamps", "colors", "stderr"] }
+csv = "1.1.6"
+const_format = "0.2.30"
+geo = "0.23.1"
+chrono = { version = "0.4.23", default-features = false, features = ["serde"] }
+zip = { version = "0.6.3", default-features = false, features = ["deflate-miniz"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 systemd-journal-logger = "0.7.0"

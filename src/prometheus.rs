@@ -73,9 +73,9 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
 #[cfg(test)]
 mod tests {
     use crate::prometheus::format;
-    use crate::providers::units::Celsius;
     use crate::providers::units::Ratio::Ratio;
-    use crate::providers::{Coordinate, Coordinates, Weather};
+    use crate::providers::units::{Celsius, Coordinate, Coordinates};
+    use crate::providers::Weather;
     use assert_str::assert_str_eq;
 
     #[test]
@@ -85,7 +85,7 @@ mod tests {
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000004",longitude="10.0123396"}} 25.5
+weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # EOF
 "##,
                 crate::config::VERSION
@@ -112,11 +112,11 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000004",longitude="10.0123396"}} 25.5
+weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # HELP weather_relative_humidity_ratio prometheus-weathermen relative humidity.
 # TYPE weather_relative_humidity_ratio gauge
 # UNIT weather_relative_humidity_ratio ratio
-weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000004",longitude="10.0123396"}} 0.55
+weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
 # EOF
 "##,
                 crate::config::VERSION

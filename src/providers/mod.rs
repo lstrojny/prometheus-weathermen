@@ -1,27 +1,29 @@
 mod cache;
+mod deutscher_wetterdienst;
 mod meteoblue;
 mod nogoodnik;
 mod open_weather;
 mod tomorrow;
 pub mod units;
 
+use crate::providers::deutscher_wetterdienst::DeutscherWetterdienst;
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::nogoodnik::Nogoodnik;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Ratio};
-use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use std::time::Duration;
 use std::vec::IntoIter;
+use units::Coordinates;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Providers {
     open_weather: Option<OpenWeather>,
     meteoblue: Option<Meteoblue>,
     tomorrow: Option<Tomorrow>,
+    deutscher_wetterdienst: Option<DeutscherWetterdienst>,
     nogoodnik: Option<Nogoodnik>,
 }
 
@@ -44,35 +46,16 @@ impl IntoIterator for Providers {
             vec.push(Arc::new(provider));
         }
 
+        if let Some(provider) = self.deutscher_wetterdienst {
+            vec.push(Arc::new(provider));
+        }
+
         if let Some(provider) = self.nogoodnik {
             vec.push(Arc::new(provider));
         }
 
         IntoIter::into_iter(vec.into_iter())
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coordinate(f32);
-impl Display for Coordinate {
-    // Standardize 7 digits for coordinates and that should be plenty
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.7}", self.0)
-    }
-}
-
-impl From<f32> for Coordinate {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coordinates {
-    #[serde(alias = "lat")]
-    pub latitude: Coordinate,
-    #[serde(alias = "lon")]
-    pub longitude: Coordinate,
 }
 
 #[derive(Debug)]
@@ -96,9 +79,14 @@ pub trait WeatherProvider: std::fmt::Debug {
 
     fn for_coordinates(
         &self,
-        cache: &Cache<String, String>,
+        cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather>;
 
     fn refresh_interval(&self) -> Duration;
+    fn cache_cardinality(&self) -> usize {
+        1
+    }
 }
+
+pub type HttpRequestBodyCache = cache::HttpRequestBody;

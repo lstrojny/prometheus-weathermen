@@ -1,11 +1,13 @@
-use crate::providers::{Coordinates, Providers, WeatherProvider, WeatherRequest};
+use crate::providers::units::Coordinates;
+use crate::providers::HttpRequestBodyCache;
+use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
+use const_format::concatcp;
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
 };
 use log::{debug, info, warn, Level};
-use moka::sync::Cache;
 use rocket::config::Ident;
 use rocket::figment::providers::Serialized;
 use rocket::serde::Serialize;
@@ -18,7 +20,7 @@ use std::time::Duration;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_CONFIG: &str = concat!("/etc/", env!("CARGO_PKG_NAME"), "/weathermen.toml");
+pub const DEFAULT_CONFIG: &str = concatcp!("/etc/", NAME, "/weathermen.toml");
 const DEFAULT_PORT: u16 = 36333;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -101,7 +103,7 @@ pub type ProviderTasks = Vec<Task>;
 pub struct Task {
     pub provider: Arc<dyn WeatherProvider + Send + Sync>,
     pub request: WeatherRequest<Coordinates>,
-    pub cache: Cache<String, String>,
+    pub cache: HttpRequestBodyCache,
 }
 
 pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
@@ -112,7 +114,8 @@ pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
     let mut tasks: ProviderTasks = vec![];
 
     for configured_provider in configured_providers {
-        let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
+        let max_capacity = config.locations.len() * configured_provider.cache_cardinality();
+        let cache = moka::sync::CacheBuilder::new(max_capacity as u64)
             .time_to_live(configured_provider.refresh_interval())
             .build();
 
