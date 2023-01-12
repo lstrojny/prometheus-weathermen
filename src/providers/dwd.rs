@@ -166,8 +166,7 @@ fn reqwest_cached_measurement_csv(
 ) -> anyhow::Result<String> {
     let method = Method::GET;
     let url = Url::parse(&format!(
-        "{}/10minutenwerte_TU_{}_now.zip",
-        BASE_URL, station_id
+        "{BASE_URL}/10minutenwerte_TU_{station_id}_now.zip"
     ))?;
 
     let key = (method.clone(), url.clone());
