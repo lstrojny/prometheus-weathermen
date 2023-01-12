@@ -55,10 +55,10 @@ fn parse_weather_station_list_csv(data: &str) -> Vec<WeatherStation> {
         .collect::<Vec<WeatherStation>>()
 }
 
-fn find_closest_weather_station<'a, 'b>(
-    coords: &'a Coordinates,
-    weather_stations: &'b [WeatherStation],
-) -> anyhow::Result<&'b WeatherStation> {
+fn find_closest_weather_station<'a>(
+    coords: &Coordinates,
+    weather_stations: &'a [WeatherStation],
+) -> anyhow::Result<&'a WeatherStation> {
     let point: Point<f64> = Point::new(
         coords.longitude.clone().into(),
         coords.latitude.clone().into(),
