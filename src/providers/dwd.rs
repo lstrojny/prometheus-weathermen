@@ -178,6 +178,7 @@ impl WeatherProvider for Dwd {
         let stations = parse_weather_station_list_csv(&station_csv);
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
 
+        // TODO: caching
         let zip = client
             .request(
                 Method::GET,
