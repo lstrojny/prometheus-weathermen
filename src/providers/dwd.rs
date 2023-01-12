@@ -87,7 +87,7 @@ fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
     let reader = Cursor::new(buf);
     let mut zip = ZipArchive::new(reader)?;
 
-    let re = Regex::new(r"^produkt_zehn_now_tu_\d{8}_\d{8}_.+\.txt$")
+    let re = Regex::new(r"^produkt_zehn_now_tu_[0-9]{8}_[0-9]{8}_.+\.txt$")
         .expect("Hardcoded, so always works");
 
     for i in 0..zip.len() {
