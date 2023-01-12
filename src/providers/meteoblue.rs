@@ -78,9 +78,9 @@ impl WeatherProvider for Meteoblue {
         let response: MeteoblueResponse = reqwest_cached_body_json::<MeteoblueResponse>(
             SOURCE_URI,
             cache,
-            &client,
+            client,
             Method::GET,
-            signed_url,
+            &signed_url,
             None,
         )?;
 

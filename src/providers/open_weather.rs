@@ -54,9 +54,9 @@ impl WeatherProvider for OpenWeather {
         let response = reqwest_cached_body_json::<OpenWeatherResponse>(
             SOURCE_URI,
             cache,
-            &client,
+            client,
             Method::GET,
-            url,
+            &url,
             None,
         )?;
 

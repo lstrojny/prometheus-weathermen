@@ -72,9 +72,9 @@ impl WeatherProvider for Tomorrow {
         let response = reqwest_cached_body_json::<TomorrowResponse>(
             SOURCE_URI,
             cache,
-            &client,
+            client,
             Method::GET,
-            url,
+            &url,
             None,
         )?;
 
