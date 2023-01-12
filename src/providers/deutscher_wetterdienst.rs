@@ -212,17 +212,16 @@ impl WeatherProvider for DeutscherWetterdienst {
 
     fn for_coordinates(
         &self,
+        client: &Client,
         cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        let client = Client::new();
-
         let station_csv = reqwest_cached_body(
             SOURCE_URI,
             cache,
-            &client,
+            client,
             Method::GET,
-            Url::parse(STATION_LIST_URL)?,
+            &Url::parse(STATION_LIST_URL)?,
             Some("iso-8859-15"),
         )?;
 
@@ -230,7 +229,7 @@ impl WeatherProvider for DeutscherWetterdienst {
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
         trace!("Found closest weather station {:?}", closest_station);
         let measurement_csv =
-            reqwest_cached_measurement_csv(cache, &client, &closest_station.station_id)?;
+            reqwest_cached_measurement_csv(cache, client, &closest_station.station_id)?;
         let measurements = parse_measurement_data_csv(&measurement_csv);
         let latest_measurement = measurements.last().expect("Taking last measurement info");
 

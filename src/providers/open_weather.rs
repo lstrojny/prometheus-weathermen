@@ -1,6 +1,7 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
 use crate::providers::units::{Coordinates, Kelvin, Ratio, ToCelsius};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
+use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
 use serde::Serialize;
@@ -37,6 +38,7 @@ impl WeatherProvider for OpenWeather {
 
     fn for_coordinates(
         &self,
+        client: &Client,
         cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
@@ -49,14 +51,12 @@ impl WeatherProvider for OpenWeather {
             ],
         )?;
 
-        let client = reqwest::blocking::Client::new();
-
         let response = reqwest_cached_body_json::<OpenWeatherResponse>(
             SOURCE_URI,
             cache,
-            &client,
+            client,
             Method::GET,
-            url,
+            &url,
             None,
         )?;
 

@@ -8,6 +8,7 @@ use figment::{
     Figment,
 };
 use log::{debug, info, warn, Level};
+use reqwest::blocking::Client;
 use rocket::config::Ident;
 use rocket::figment::providers::Serialized;
 use rocket::serde::Serialize;
@@ -103,6 +104,7 @@ pub type ProviderTasks = Vec<Task>;
 pub struct Task {
     pub provider: Arc<dyn WeatherProvider + Send + Sync>,
     pub request: WeatherRequest<Coordinates>,
+    pub client: Client,
     pub cache: HttpRequestBodyCache,
 }
 
@@ -136,6 +138,7 @@ pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
                     name: location.name.unwrap_or(name),
                     query: location.coordinates,
                 },
+                client: Client::new(),
                 cache: cache.clone(),
             });
         }

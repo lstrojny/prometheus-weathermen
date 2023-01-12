@@ -2,6 +2,7 @@ use crate::providers::units::Coordinates;
 use crate::providers::HttpRequestBodyCache;
 use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::format_err;
+use reqwest::blocking::Client;
 use rocket::serde::Serialize;
 use serde::Deserialize;
 use std::time::Duration;
@@ -18,6 +19,7 @@ impl WeatherProvider for Nogoodnik {
 
     fn for_coordinates(
         &self,
+        _client: &Client,
         _cache: &HttpRequestBodyCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {

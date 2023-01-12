@@ -25,7 +25,7 @@ pub fn reqwest_cached_body_json<T: DeserializeOwned + std::fmt::Debug>(
     cache: &HttpRequestBodyCache,
     client: &Client,
     method: Method,
-    url: Url,
+    url: &Url,
     charset: Option<&str>,
 ) -> anyhow::Result<T> {
     let body = reqwest_cached_body(source, cache, client, method, url, charset)?;
@@ -44,7 +44,7 @@ pub fn reqwest_cached_body(
     cache: &HttpRequestBodyCache,
     client: &Client,
     method: Method,
-    url: Url,
+    url: &Url,
     charset: Option<&str>,
 ) -> anyhow::Result<String> {
     let key = (method.clone(), url.clone());
@@ -66,7 +66,7 @@ pub fn reqwest_cached_body(
     debug!("No cache item found for \"{method:#} {url:#}\". Requesting");
 
     let body = client
-        .request(method, url)
+        .request(method, url.clone())
         .send()?
         .text_with_charset(charset.unwrap_or("utf-8"))?;
     cache.insert(key, body.clone());

@@ -1,6 +1,7 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
 use crate::providers::units::{Celsius, Coordinates, Ratio};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
+use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -48,6 +49,7 @@ impl WeatherProvider for Tomorrow {
 
     fn for_coordinates(
         &self,
+        client: &Client,
         cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
@@ -67,14 +69,12 @@ impl WeatherProvider for Tomorrow {
             ],
         )?;
 
-        let client = reqwest::blocking::Client::new();
-
         let response = reqwest_cached_body_json::<TomorrowResponse>(
             SOURCE_URI,
             cache,
-            &client,
+            client,
             Method::GET,
-            url,
+            &url,
             None,
         )?;
 
