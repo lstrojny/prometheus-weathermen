@@ -62,6 +62,7 @@ impl ToCelsius for Fahrenheit {
 #[serde(untagged)]
 pub enum Ratio {
     Percentage(u16),
+    PercentageDecimal(f64),
     Ratio(f64),
 }
 
@@ -70,12 +71,19 @@ impl Ratio {
         match self {
             Self::Ratio(v) => *v,
             Self::Percentage(v) => f64::from(*v) / 100.0,
+            Self::PercentageDecimal(v) => v / 100.0,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coordinate(f32);
+pub struct Coordinate(f64);
+
+impl PartialEq for Coordinate {
+    fn eq(&self, other: &Self) -> bool {
+        (self.0 - other.0).abs() < 0.000_000_1
+    }
+}
 
 impl Display for Coordinate {
     // Standardize 7 digits for coordinates and that should be plenty
@@ -84,9 +92,15 @@ impl Display for Coordinate {
     }
 }
 
-impl From<f32> for Coordinate {
-    fn from(value: f32) -> Self {
+impl From<f64> for Coordinate {
+    fn from(value: f64) -> Self {
         Self(value)
+    }
+}
+
+impl From<Coordinate> for f64 {
+    fn from(val: Coordinate) -> Self {
+        val.0
     }
 }
 
