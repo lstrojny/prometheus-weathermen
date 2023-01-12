@@ -136,7 +136,7 @@ struct Measurement {
     #[serde(rename = "STATIONS_ID")]
     _station_id: String,
     #[serde(rename = "MESS_DATUM", with = "minute_precision_date_format")]
-    _time: chrono::DateTime<Utc>,
+    time: chrono::DateTime<Utc>,
     #[serde(rename = "PP_10")]
     _atmospheric_pressure: String,
     #[serde(rename = "TT_10")]
@@ -229,12 +229,17 @@ impl WeatherProvider for DeutscherWetterdienst {
 
         let stations = parse_weather_station_list_csv(&station_csv);
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
+        trace!("Found closest weather stations {:?}", closest_station);
         let measurement_csv =
             reqwest_cached_measurement_csv(cache, &client, &closest_station.station_id)?;
         let measurements = parse_measurement_data_csv(&measurement_csv);
-        let measurement = measurements.last().expect("Taking last measurement info");
+        let latest_measurement = measurements.last().expect("Taking last measurement info");
 
-        debug!("Found last measurement: {:?}", measurement.clone());
+        debug!(
+            "Using latest measurement from {:?}: {:?}",
+            latest_measurement.time,
+            latest_measurement.clone()
+        );
 
         Ok(Weather {
             source: SOURCE_URI.into(),
@@ -244,8 +249,8 @@ impl WeatherProvider for DeutscherWetterdienst {
                 latitude: closest_station.latitude.clone(),
                 longitude: closest_station.longitude.clone(),
             },
-            temperature: measurement.temperature_200_centimers,
-            relative_humidity: Some(measurement.relative_humidity_200_centimeters),
+            temperature: latest_measurement.temperature_200_centimers,
+            relative_humidity: Some(latest_measurement.relative_humidity_200_centimeters),
         })
     }
 
