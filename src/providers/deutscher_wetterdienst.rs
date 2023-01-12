@@ -37,18 +37,17 @@ struct WeatherStation {
 }
 
 fn strip_duplicate_spaces(data: &str) -> String {
-    let mut in_space = false;
+    let mut prev_space = false;
 
     data.chars()
         .filter(|c| {
-            if *c == ' ' {
-                if in_space {
-                    return false;
-                }
-                in_space = true;
-            } else {
-                in_space = false;
+            let cur_space = *c == ' ';
+
+            if cur_space && prev_space {
+                return false;
             }
+
+            prev_space = cur_space;
 
             true
         })
@@ -131,7 +130,7 @@ fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
     Err(anyhow!("Could not find weather data file in ZIP archive"))
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 struct Measurement {
     #[serde(rename = "STATIONS_ID")]
     _station_id: String,
@@ -265,54 +264,115 @@ impl WeatherProvider for DeutscherWetterdienst {
 
 #[cfg(test)]
 mod tests {
-    use crate::providers::deutscher_wetterdienst::{
-        find_closest_weather_station, parse_weather_station_list_csv, WeatherStation,
-    };
-    use crate::providers::units::Coordinates;
+    mod parse_weather_station_list {
+        use crate::providers::deutscher_wetterdienst::{
+            parse_weather_station_list_csv, WeatherStation,
+        };
 
-    #[test]
-    fn parse_csv() -> () {
-        assert_eq!(vec![WeatherStation {
-            station_id: "00044".into(),
-            name: "Großenkneten".into(),
-            latitude: 52.9336.into(),
-            longitude: 8.2370.into(),
-        }], parse_weather_station_list_csv(&"Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+        #[test]
+        fn parse_short_list() {
+            assert_eq!(vec![WeatherStation {
+                station_id: "00044".into(),
+                name: "Großenkneten".into(),
+                latitude: 52.9336.into(),
+                longitude: 8.2370.into(),
+            }], parse_weather_station_list_csv(&"Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
 00044 20070209 20230111             44     52.9336    8.2370 Großenkneten                             Niedersachsen                                                                                     \n\
 ".to_string()));
+        }
     }
 
-    #[test]
-    fn find_closest() -> () {
-        assert_eq!(
-            &WeatherStation {
-                station_id: "03379".into(),
-                name: "München-Stadt".into(),
-                latitude: 48.1632.into(),
-                longitude: 11.5429.into(),
-            },
-            find_closest_weather_station(
-                &Coordinates {
-                    latitude: 48.11591.into(),
-                    longitude: 11.570906.into(),
+    mod find_closes_weather_station {
+        use crate::providers::deutscher_wetterdienst::{
+            find_closest_weather_station, WeatherStation,
+        };
+        use crate::providers::units::Coordinates;
+
+        #[test]
+        fn find_closest_station_to_a_coordinate() {
+            assert_eq!(
+                &WeatherStation {
+                    station_id: "03379".into(),
+                    name: "München-Stadt".into(),
+                    latitude: 48.1632.into(),
+                    longitude: 11.5429.into(),
                 },
-                &vec![
-                    WeatherStation {
-                        station_id: "03379".into(),
-                        name: "München-Stadt".into(),
-                        latitude: 48.1632.into(),
-                        longitude: 11.5429.into(),
+                find_closest_weather_station(
+                    &Coordinates {
+                        latitude: 48.11591.into(),
+                        longitude: 11.570906.into(),
                     },
-                    WeatherStation {
-                        station_id: "01262".into(),
-                        name: "München-Flughafen".into(),
-                        latitude: 48.3477.into(),
-                        longitude: 11.8134.into(),
-                    },
-                ]
-            )
-            .expect("Should find something")
-        );
+                    &vec![
+                        WeatherStation {
+                            station_id: "03379".into(),
+                            name: "München-Stadt".into(),
+                            latitude: 48.1632.into(),
+                            longitude: 11.5429.into(),
+                        },
+                        WeatherStation {
+                            station_id: "01262".into(),
+                            name: "München-Flughafen".into(),
+                            latitude: 48.3477.into(),
+                            longitude: 11.8134.into(),
+                        },
+                    ]
+                )
+                .expect("Should find something")
+            );
+        }
+    }
+
+    mod strip_duplicate_spaces {
+        use crate::providers::deutscher_wetterdienst::strip_duplicate_spaces;
+
+        #[test]
+        fn not_stripped_if_not_needed() {
+            assert_eq!("foo bar", strip_duplicate_spaces("foo bar"));
+        }
+
+        #[test]
+        fn strips_two_spaces() {
+            assert_eq!("foo bar", strip_duplicate_spaces("foo  bar"));
+        }
+
+        #[test]
+        fn strips_more_than_two_spaces() {
+            assert_eq!("foo bar", strip_duplicate_spaces("foo   bar"));
+        }
+
+        #[test]
+        fn strips_multiple_occurrences() {
+            assert_eq!("foo bar baz ", strip_duplicate_spaces("foo   bar   baz "));
+        }
+    }
+
+    mod parse_measurement_data_csv {
+        use crate::providers::deutscher_wetterdienst::{parse_measurement_data_csv, Measurement};
+        use crate::providers::units::Ratio;
+        use chrono::{DateTime, Utc};
+
+        #[test]
+        fn parse_example() {
+            assert_eq!(
+                &[Measurement {
+                    _station_id: "379".into(),
+                    _atmospheric_pressure: "-999".into(),
+                    _dew_point_temperature_200_centimeters: 2.4.into(),
+                    _temperature_5_centimeters: 2.5.into(),
+                    time: DateTime::parse_from_rfc3339(&"2023-01-12T00:00:00Z")
+                        .expect("Static value")
+                        .with_timezone(&Utc {}),
+                    temperature_200_centimers: 5.1.into(),
+                    relative_humidity_200_centimeters: Ratio::PercentageDecimal(82.6),
+                }],
+                &parse_measurement_data_csv(
+                    &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
+            379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor\n\
+    "
+                    .to_string(),
+                )[..]
+            );
+        }
     }
 }

@@ -18,7 +18,7 @@ impl ToCelsius for Kelvin {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone, PartialEq)]
 pub struct Celsius(f32);
 
 impl From<f32> for Celsius {
@@ -58,7 +58,7 @@ impl ToCelsius for Fahrenheit {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Ratio {
     Percentage(u16),
