@@ -85,4 +85,7 @@ pub trait WeatherProvider: std::fmt::Debug {
     ) -> anyhow::Result<Weather>;
 
     fn refresh_interval(&self) -> Duration;
+    fn cache_cardinality(&self) -> usize {
+        1
+    }
 }

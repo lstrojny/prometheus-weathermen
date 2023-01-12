@@ -113,7 +113,8 @@ pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
     let mut tasks: ProviderTasks = vec![];
 
     for configured_provider in configured_providers {
-        let cache = moka::sync::CacheBuilder::new(config.locations.len() as u64)
+        let max_capacity = config.locations.len() * configured_provider.cache_cardinality();
+        let cache = moka::sync::CacheBuilder::new(max_capacity as u64)
             .time_to_live(configured_provider.refresh_interval())
             .build();
 

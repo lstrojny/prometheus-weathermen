@@ -5,13 +5,15 @@ use anyhow::anyhow;
 use chrono::Utc;
 use const_format::concatcp;
 use csv::Trim;
-use geo::{Closest, ClosestPoint, Point};
-use log::debug;
+use geo::{Closest, ClosestPoint, MultiPoint, Point};
+use log::{debug, trace};
 use regex::Regex;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
+use std::io::{Cursor, Read};
 use std::time::Duration;
+use zip::ZipArchive;
 
 const SOURCE_URI: &str = "de.dwd";
 const BASE_URL: &str = "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/10_minutes/air_temperature/now";
@@ -57,11 +59,11 @@ fn find_closest_weather_station<'a, 'b>(
     coords: &'a Coordinates,
     weather_stations: &'b [WeatherStation],
 ) -> anyhow::Result<&'b WeatherStation> {
-    let point: geo::Point<f64> = Point::new(
+    let point: Point<f64> = Point::new(
         coords.longitude.clone().into(),
         coords.latitude.clone().into(),
     );
-    let points = geo::MultiPoint::new(
+    let points = MultiPoint::new(
         weather_stations
             .iter()
             .map(|s| Point::new(s.longitude.clone().into(), s.latitude.clone().into()))
@@ -82,26 +84,31 @@ fn find_closest_weather_station<'a, 'b>(
 }
 
 fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
-    use std::io::prelude::*;
-    let reader = std::io::Cursor::new(buf);
-    let mut zip = zip::ZipArchive::new(reader)?;
+    let reader = Cursor::new(buf);
+    let mut zip = ZipArchive::new(reader)?;
 
-    let re = Regex::new(r"^produkt_zehn_now_tu_.*\.txt$").expect("Hardcoded, so always works");
+    let re = Regex::new(r"^produkt_zehn_now_tu_\d{8}_\d{8}_.+\.txt$")
+        .expect("Hardcoded, so always works");
 
     for i in 0..zip.len() {
         let mut file = zip.by_index(i)?;
 
         if !re.is_match(file.name()) {
+            trace!("Skipping file in measurement data zip: {}", file.name());
             continue;
         }
 
-        debug!("Found file name in measurement data zip: {}", file.name());
+        debug!(
+            "Found matching file in measurement data zip: {}",
+            file.name()
+        );
 
         let mut buf: String = String::new();
         file.read_to_string(&mut buf)?;
 
         return Ok(buf);
     }
+
     Err(anyhow!("Could not find weather data file in ZIP archive"))
 }
 
@@ -140,7 +147,6 @@ mod minute_precision_date_format {
 }
 
 fn parse_measurement_data_csv(data: &String) -> Vec<Measurement> {
-    debug!("parse_weather_station_data_csv");
     let reader = csv::ReaderBuilder::new()
         .delimiter(b';')
         .double_quote(false)
@@ -151,6 +157,35 @@ fn parse_measurement_data_csv(data: &String) -> Vec<Measurement> {
         .into_deserialize::<Measurement>()
         .map(|m| m.expect("Should always succeed"))
         .collect::<Vec<Measurement>>()
+}
+
+fn reqwest_cached_measurement_csv(
+    cache: &RequestBody,
+    client: &Client,
+    station_id: &String,
+) -> anyhow::Result<String> {
+    let method = Method::GET;
+    let url = Url::parse(&format!(
+        "{}/10minutenwerte_TU_{}_now.zip",
+        BASE_URL, station_id
+    ))?;
+
+    let key = (method.clone(), url.clone());
+    let value = cache.get(&key);
+
+    if let Some(csv) = value {
+        debug!("Found cached measurement data for {}", station_id);
+        return Ok(csv);
+    }
+
+    debug!("No cached measurement data found for {}", station_id);
+
+    let zip = client.request(method, url).send()?.bytes();
+    let csv = read_measurement_data_zip(&zip?)?;
+
+    cache.insert(key, csv.clone());
+
+    Ok(csv)
 }
 
 impl WeatherProvider for Dwd {
@@ -176,21 +211,9 @@ impl WeatherProvider for Dwd {
 
         let stations = parse_weather_station_list_csv(&station_csv);
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
-
-        // TODO: caching
-        let zip = client
-            .request(
-                Method::GET,
-                Url::parse(&format!(
-                    "{}/10minutenwerte_TU_{}_now.zip",
-                    BASE_URL, closest_station.station_id
-                ))?,
-            )
-            .send()?
-            .bytes();
-
-        let weather_info_csv = read_measurement_data_zip(&zip?)?;
-        let measurements = parse_measurement_data_csv(&weather_info_csv);
+        let measurement_csv =
+            reqwest_cached_measurement_csv(cache, &client, &closest_station.station_id)?;
+        let measurements = parse_measurement_data_csv(&measurement_csv);
         let measurement = measurements.last().expect("Taking last measurement info");
 
         debug!("Found last measurement: {:?}", measurement.clone());
@@ -210,6 +233,10 @@ impl WeatherProvider for Dwd {
 
     fn refresh_interval(&self) -> Duration {
         self.cache.refresh_interval
+    }
+
+    fn cache_cardinality(&self) -> usize {
+        2
     }
 }
 
