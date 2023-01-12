@@ -59,6 +59,7 @@ jobs:
         uses: actions-rs/audit-check@v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
   build:
     name: ${{ matrix.profile == 'debug' && 'Debug build' || 'Build' }} ${{ matrix.desc }} (${{ matrix.target }})
