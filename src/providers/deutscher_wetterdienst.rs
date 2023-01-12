@@ -7,7 +7,6 @@ use const_format::concatcp;
 use csv::Trim;
 use geo::{Closest, ClosestPoint, MultiPoint, Point};
 use log::{debug, trace};
-use regex::Regex;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
@@ -37,9 +36,27 @@ struct WeatherStation {
     longitude: Coordinate,
 }
 
+fn strip_duplicate_spaces(data: &str) -> String {
+    let mut in_space = false;
+
+    data.chars()
+        .filter(|c| {
+            if *c == ' ' {
+                if in_space {
+                    return false;
+                }
+                in_space = true;
+            } else {
+                in_space = false;
+            }
+
+            true
+        })
+        .collect()
+}
+
 fn parse_weather_station_list_csv(data: &str) -> Vec<WeatherStation> {
-    let re = Regex::new(r"[ ]+").expect("Hardcoded, so always works");
-    let clean_data = re.replace_all(data, " ");
+    let stripped = strip_duplicate_spaces(data);
 
     let reader = csv::ReaderBuilder::new()
         .delimiter(b' ')
@@ -47,7 +64,7 @@ fn parse_weather_station_list_csv(data: &str) -> Vec<WeatherStation> {
         .comment(Some(b'-'))
         .trim(Trim::All)
         .flexible(true)
-        .from_reader(clean_data.as_bytes());
+        .from_reader(stripped.as_bytes());
 
     reader
         .into_deserialize::<WeatherStation>()
@@ -83,17 +100,18 @@ fn find_closest_weather_station<'a>(
     }
 }
 
+fn is_measurement_file(file_name: &str) -> bool {
+    file_name.starts_with("produkt_zehn_now") && file_name.ends_with(".txt")
+}
+
 fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
     let reader = Cursor::new(buf);
     let mut zip = ZipArchive::new(reader)?;
 
-    let re = Regex::new(r"^produkt_zehn_now_tu_[0-9]{8}_[0-9]{8}_.+\.txt$")
-        .expect("Hardcoded, so always works");
-
     for i in 0..zip.len() {
         let mut file = zip.by_index(i)?;
 
-        if !re.is_match(file.name()) {
+        if !is_measurement_file(file.name()) {
             trace!("Skipping file in measurement data zip: {}", file.name());
             continue;
         }

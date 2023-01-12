@@ -1633,7 +1633,6 @@ dependencies = [
  "moka",
  "openssl",
  "prometheus-client",
- "regex",
  "reqwest",
  "rocket",
  "rocket-basicauth",
