@@ -126,7 +126,7 @@ jobs:
 
       - name: Get metadata
         id: metadata
-        run: echo version=`cargo metadata --format-version=1 --no-deps | jq -r .packages[0].version`${{ startsWith(github.ref, 'refs/tags/') && '' || format('-{0}', steps.git.outputs.sha_short) }} >> $GITHUB_OUTPUT
+        run: echo version=`cargo metadata --format-version=1 --no-deps | jq -r .packages[0].version`${{ !startsWith(github.ref, 'refs/tags/') && format('-{0}', steps.git.outputs.sha_short) || '' }} >> $GITHUB_OUTPUT
 
       - name: Set archive name
         id: archive
