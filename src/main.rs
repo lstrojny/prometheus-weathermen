@@ -49,6 +49,15 @@ struct Args {
     config: PathBuf,
 }
 
+fn handle_fatal_error<E, R>(error: E) -> R
+where
+    E: std::fmt::Display,
+{
+    error!("Fatal error: {error}");
+
+    exit(1)
+}
+
 #[launch]
 async fn rocket() -> _ {
     let args = Args::parse();
@@ -60,22 +69,13 @@ async fn rocket() -> _ {
 
     logging::init(log_level).expect("Logging successfully initialied");
 
-    let config = read(args.config, log_level).unwrap_or_else(|e| {
-        error!("Fatal error: {e}");
-        exit(1);
-    });
+    let config = read(args.config, log_level).unwrap_or_else(handle_fatal_error);
 
     let config_clone = config.clone();
     let tasks = task::spawn_blocking(move || get_provider_tasks(config_clone))
         .await
-        .unwrap_or_else(|e| {
-            error!("Fatal error: {e}");
-            exit(1);
-        })
-        .unwrap_or_else(|e| {
-            error!("Fatal error: {e}");
-            exit(1);
-        });
+        .unwrap_or_else(handle_fatal_error)
+        .unwrap_or_else(handle_fatal_error);
 
     rocket::custom(config.http)
         .manage(tasks)
