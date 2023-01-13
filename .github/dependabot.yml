@@ -4,8 +4,9 @@ updates:
     directory: /
     schedule:
       interval: daily
-    dependency-type: all
     open-pull-requests-limit: 30
+    allow:
+      - dependency-type: all
 
   - package-ecosystem: github-actions
     directory: /
