@@ -45,6 +45,10 @@ longitude = 14.435965
 # [provider.deutscher_wetterdienst]
 #
 # A provider using Deutscher Wetterdienst Open Data, the state run weather service in Germany
+#
+# Configure how often weather information should be refreshed from this provider . Default is 10 minutes
+# Format: 15days, 2min, 10s. Can also be combined: 1hour 30min
+# refresh_interval = "10min"
 
 
 # [provider.nogoodnik]
@@ -54,10 +58,13 @@ longitude = 14.435965
 
 # [http]
 #
-# Configure port to listen on. Default is 3633
+# Configure port to listen on. Default is 36333
 # port = 36333
 #
 # For more HTTP settings check https://rocket.rs/v0.5-rc/guide/configuration/
+#
+# Configure the address to listen to, default is 127.0.0.1
+# address = "127.0.0.1"
 
 
 # [http.tls]
