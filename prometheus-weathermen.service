@@ -1,0 +1,44 @@
+[Unit]
+Description=Prometheus weathermen service
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/local/bin/prometheus-weathermen -vvv
+Restart=on-failure
+# Let systemd dynamically create a non-privileged user
+# You might need to change that to a static user if e.g. you need ACL based read permissions for TLS certificates
+DynamicUser=yes
+ProtectSystem=strict
+ReadWritePaths=/tmp
+ProtectHome=read-only
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateMounts=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectKernelLogs=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+TemporaryFileSystem=/:ro
+# /usr/lib is bound here for dynamic libraries. For more exotic configurations, you might need to adjust the path
+# You can also leave it out for statically linked binaries
+BindReadOnlyPaths=/etc/prometheus-weathermen/weathermen.toml /usr/lib
+ProtectClock=true
+ProtectHome=true
+ProtectHostname=true
+RemoveIPC=true
+ProtectProc=invisible
+UMask=0777
+RestrictRealtime=yes
+SystemCallArchitectures=native
+SystemCallFilter=~@swap @resources @reboot @raw-io @privileged @obsolete @mount @module @debug @cpu-emulation @clock
+[Install]
+WantedBy=multi-user.target
