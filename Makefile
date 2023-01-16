@@ -11,7 +11,7 @@ ifdef TARGET
   BUILD_ARGS := $(BUILD_ARGS) --target=$(TARGET)
 endif
 
-CARGO = cargo
+CARGO ?= cargo
 
 PACKAGE_METADATA = $(shell cargo metadata --format-version=1 --no-deps)
 PACKAGE_NAME = $(shell echo '$(PACKAGE_METADATA)' | jq -r .packages[0].name)
