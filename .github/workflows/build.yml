@@ -126,11 +126,15 @@ jobs:
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
 
+      - name: Find archive
+        run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
+        id: list-archive
+
       - name: Upload ${{ matrix.profile }} binary
         uses: actions/upload-artifact@v3.1.2
         with:
-          name: distribution-${{ matrix.desc }}-${{ matrix.target }}-${{ matrix.profile }}
-          path: prometheus-weathermen-*.tar.zz
+          name: ${{ steps.list-archive.outputs.archive }}
+          path: ${{ steps.list-archive.outputs.archive }}
           if-no-files-found: error
 
   release:
