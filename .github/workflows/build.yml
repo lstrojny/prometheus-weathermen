@@ -113,35 +113,20 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
-      - name: Build ${{ matrix.profile }} binary
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          use-cross: true
-          command: build
-          args: ${{ matrix.profile == 'release' && '--release' || '' }} --target=${{ matrix.target }}
-
-      - name: Set GIT short sha
-        id: git
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Get metadata
-        id: metadata
-        run: echo version=`cargo metadata --format-version=1 --no-deps | jq -r .packages[0].version`${{ !startsWith(github.ref, 'refs/tags/') && format('-{0}', steps.git.outputs.sha_short) || '' }} >> $GITHUB_OUTPUT
-
-      - name: Set archive name
-        id: archive
-        run: echo archive_name=prometheus-weathermen-${{ steps.metadata.outputs.version }}-${{ matrix.desc}}.tar.zz >> $GITHUB_OUTPUT
-
-      - name: Create archive
-        run: |
-          cp weathermen.toml.dist target/${{ matrix.target }}/${{ matrix.profile }}
-          tar -C target/${{ matrix.target }}/${{ matrix.profile }} -Jcvf ${{ steps.archive.outputs.archive_name }} prometheus-weathermen weathermen.toml.dist
+      - name: Build ${{ matrix.profile }} archive
+        run: make dist
+        env:
+          CARGO: cross
+          DEBUG: ${{ matrix.profile == 'debug' && 1 || 0 }}
+          RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
+          SUFFIX: ${{ matrix.desc }}
+          TARGET: ${{ matrix.target }}
 
       - name: Upload ${{ matrix.profile }} binary
         uses: actions/upload-artifact@v3.1.2
         with:
-          name: ${{ steps.archive.outputs.archive_name }}
-          path: ${{ steps.archive.outputs.archive_name }}
+          name: distribution-${{ matrix.desc }}-${{ matrix.target }}-${{ matrix.profile }}
+          path: prometheus-weathermen-*.tar.zz
           if-no-files-found: error
 
   release:
