@@ -95,6 +95,7 @@ jobs:
           profile: minimal
           target: ${{ matrix.target }}
           override: true
+          components: cross
 
       - name: Set up cargo cache
         uses: actions/cache@v3.2.3
