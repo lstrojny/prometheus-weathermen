@@ -19,7 +19,6 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
 
       - name: Set up cargo cache
         uses: actions/cache@v3.2.3
@@ -93,7 +92,6 @@ jobs:
           toolchain: stable
           profile: minimal
           target: ${{ matrix.target }}
-          override: true
           components: rustfmt, clippy
 
       - name: Set up cargo cache
