@@ -11,3 +11,14 @@ image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge"
 
 [target.armv7-unknown-linux-gnueabihf]
 image = "ghcr.io/cross-rs/armv7-unknown-linux-gnueabihf:edge"
+
+
+# Use edge image for musl targets as well to get the newest toolchain
+[target.x86_64-unknown-linux-musl]
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:edge"
+
+[target.aarch64-unknown-linux-musl]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-musl:edge"
+
+[target.armv7-unknown-linux-musleabihf]
+image = "ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:edge"
