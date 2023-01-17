@@ -19,7 +19,6 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
           components: rustfmt, clippy
 
       - name: Set up cargo cache
@@ -94,7 +93,7 @@ jobs:
           toolchain: stable
           profile: minimal
           target: ${{ matrix.target }}
-          override: true
+          components: rustfmt, clippy
 
       - name: Set up cargo cache
         uses: actions/cache@v3.2.3
@@ -113,35 +112,30 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
-      - name: Build ${{ matrix.profile }} binary
+      - name: Install cross
         uses: actions-rs/cargo@v1.0.3
         with:
           use-cross: true
-          command: build
-          args: ${{ matrix.profile == 'release' && '--release' || '' }} --target=${{ matrix.target }}
+          command: help
 
-      - name: Set GIT short sha
-        id: git
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Build ${{ matrix.profile }} archive
+        run: make dist
+        env:
+          CARGO: cross
+          DEBUG: ${{ matrix.profile == 'debug' && 1 || 0 }}
+          RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
+          SUFFIX: ${{ matrix.desc }}
+          TARGET: ${{ matrix.target }}
 
-      - name: Get metadata
-        id: metadata
-        run: echo version=`cargo metadata --format-version=1 --no-deps | jq -r .packages[0].version`${{ !startsWith(github.ref, 'refs/tags/') && format('-{0}', steps.git.outputs.sha_short) || '' }} >> $GITHUB_OUTPUT
-
-      - name: Set archive name
-        id: archive
-        run: echo archive_name=prometheus-weathermen-${{ steps.metadata.outputs.version }}-${{ matrix.desc}}.tar.zz >> $GITHUB_OUTPUT
-
-      - name: Create archive
-        run: |
-          cp weathermen.toml.dist target/${{ matrix.target }}/${{ matrix.profile }}
-          tar -C target/${{ matrix.target }}/${{ matrix.profile }} -Jcvf ${{ steps.archive.outputs.archive_name }} prometheus-weathermen weathermen.toml.dist
+      - name: Find archive
+        run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
+        id: list-archive
 
       - name: Upload ${{ matrix.profile }} binary
         uses: actions/upload-artifact@v3.1.2
         with:
-          name: ${{ steps.archive.outputs.archive_name }}
-          path: ${{ steps.archive.outputs.archive_name }}
+          name: ${{ steps.list-archive.outputs.archive }}
+          path: ${{ steps.list-archive.outputs.archive }}
           if-no-files-found: error
 
   release:
