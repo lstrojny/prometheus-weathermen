@@ -1,4 +1,4 @@
-# Prometheus Weathermen [![Build Pipeline](https://github.com/lstrojny/prometheus-weathermen/actions/workflows/build.yml/badge.svg)](https://github.com/lstrojny/prometheus-weathermen/actions/workflows/build.yml)
+# Prometheus Weathermen [![Build Pipeline](https://github.com/lstrojny/prometheus-weathermen/actions/workflows/build.yml/badge.svg)](https://github.com/lstrojny/prometheus-weathermen/actions/workflows/build.yml) ![crates.io](https://img.shields.io/crates/v/prometheus-weathermen.svg)
 
 <font size=4><blockquote><em>“You don't need a weatherman to know which way the wind blows”</em><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— Bob Dylan, Subterranean Homesick Blues</blockquote></font>
 
