@@ -20,7 +20,7 @@ PACKAGE_NAME = $(shell echo '$(PACKAGE_METADATA)' | jq -r .packages[0].name)
 CURRENT_VERSION = $(shell echo '$(PACKAGE_METADATA)' | jq -r .packages[0].version)
 CURRENT_REVISION = $(shell git rev-parse --short HEAD)
 
-ifneq ($(RELEASE), 0)
+ifeq ($(RELEASE), 1)
 	VERSION = $(CURRENT_VERSION)
 else
 	VERSION = $(CURRENT_VERSION)-$(CURRENT_REVISION)
@@ -53,7 +53,7 @@ endif
 	tar -C $(DIST_DIR) -Jcvf $(ARCHIVE_NAME) $(PACKAGE_NAME_AND_VERSION)
 
 build:
-	$(CARGO) build $(BUILD_ARGS)
+	PROMW_VERSION=$(VERSION) $(CARGO) build $(BUILD_ARGS)
 
 check-dist:
 ifndef SUFFIX
