@@ -31,6 +31,9 @@ PACKAGE_NAME_AND_VERSION = $(PACKAGE_NAME)-$(VERSION)-$(SUFFIX)
 ARCHIVE_DIR = $(DIST_DIR)/$(PACKAGE_NAME_AND_VERSION)
 ARCHIVE_NAME = $(PACKAGE_NAME_AND_VERSION).tar.zz
 
+.DEFAULT_GOAL = help
+.PHONY: dist build check-dist help
+
 dist: check-dist build
 	rm -rf $(ARCHIVE_DIR)
 	mkdir -p $(ARCHIVE_DIR)
@@ -57,7 +60,7 @@ ifndef SUFFIX
 	_ := $(error SUFFIX must be defined)
 endif
 
-all: build
-
 help:
-	@echo "usage: make [DEBUG=1] [RELEASE=0] [TARGET=] [SUFFIX=]"
+	@echo "Targets:"
+	@echo "Build dev target on the current machine: make build"
+	@echo "Build distribution package:              make dist [DEBUG=1] [RELEASE=0] [TARGET=] [SUFFIX=]"
