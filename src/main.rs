@@ -4,6 +4,7 @@
 #![warn(clippy::missing_const_for_fn)]
 #![warn(clippy::cargo)]
 #![warn(clippy::cargo_common_metadata)]
+#![warn(clippy::unwrap_used)]
 #![allow(clippy::no_effect_underscore_binding)]
 
 use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};

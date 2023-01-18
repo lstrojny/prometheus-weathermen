@@ -60,7 +60,7 @@ impl CredentialsStore {
 fn default_rocket_config() -> rocket::Config {
     rocket::Config {
         port: DEFAULT_PORT,
-        ident: Ident::try_new(NAME.to_string()).unwrap(),
+        ident: Ident::try_new(NAME.to_string()).expect("Hardcoded, cannot fail"),
         ..rocket::Config::default()
     }
 }

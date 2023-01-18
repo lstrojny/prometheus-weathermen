@@ -63,7 +63,11 @@ impl WeatherProvider for Meteoblue {
 
         mac.update(url.path().as_bytes());
         mac.update(b"?");
-        mac.update(url.query().expect("Query cannot be empty").as_bytes());
+        mac.update(
+            url.query()
+                .expect("Query cannot be empty as it was set above")
+                .as_bytes(),
+        );
         let key = mac.finalize();
 
         let sig = hex::encode(key.into_bytes());
