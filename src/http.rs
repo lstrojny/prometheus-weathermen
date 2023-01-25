@@ -143,24 +143,19 @@ pub fn maybe_authenticate(
     credentials_store: &Option<CredentialsStore>,
     credentials_presented: &Option<BasicAuth>,
 ) -> Result<Granted, Denied> {
-    if credentials_store.is_none() {
-        trace!("No credentials store configured, authentication required");
-        return Ok(Granted::NotRequired);
+    match (credentials_store, credentials_presented) {
+        (Some(credentials_store), Some(credentials_presented)) => {
+            authenticate(credentials_store, credentials_presented)
+        }
+        (None, _) => {
+            trace!("No credentials store configured, authentication required");
+            Ok(Granted::NotRequired)
+        }
+        (_, None) => {
+            trace!("No credentials presented. Unauthorized");
+            Err(Denied::Unauthorized)
+        }
     }
-
-    if credentials_presented.is_none() {
-        trace!("No credentials presented. Unauthorized");
-        return Err(Denied::Unauthorized);
-    }
-
-    authenticate(
-        credentials_store
-            .as_ref()
-            .expect("Credentials have been checked previously"),
-        credentials_presented
-            .as_ref()
-            .expect("Authentication data has been checked previously"),
-    )
 }
 
 fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Granted, Denied> {
