@@ -148,7 +148,7 @@ pub fn maybe_authenticate(
             authenticate(credentials_store, credentials_presented)
         }
         (None, _) => {
-            trace!("No credentials store configured, authentication required");
+            trace!("No credentials store configured, skipping authentication");
             Ok(Granted::NotRequired)
         }
         (_, None) => {
