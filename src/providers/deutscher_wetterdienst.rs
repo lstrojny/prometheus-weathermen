@@ -231,25 +231,29 @@ impl WeatherProvider for DeutscherWetterdienst {
         let measurement_csv =
             reqwest_cached_measurement_csv(cache, client, &closest_station.station_id)?;
         let measurements = parse_measurement_data_csv(&measurement_csv);
-        let latest_measurement = measurements.last().expect("Taking last measurement info");
 
-        debug!(
-            "Using latest measurement from {:?}: {:?}",
-            latest_measurement.time,
-            latest_measurement.clone()
-        );
+        match &measurements[..] {
+            [.., latest_measurement] => {
+                debug!(
+                    "Using latest measurement from {:?}: {:?}",
+                    latest_measurement.time,
+                    latest_measurement.clone()
+                );
 
-        Ok(Weather {
-            source: SOURCE_URI.into(),
-            location: request.name.clone(),
-            city: closest_station.name.clone(),
-            coordinates: Coordinates {
-                latitude: closest_station.latitude.clone(),
-                longitude: closest_station.longitude.clone(),
-            },
-            temperature: latest_measurement.temperature_200_centimers,
-            relative_humidity: Some(latest_measurement.relative_humidity_200_centimeters),
-        })
+                Ok(Weather {
+                    source: SOURCE_URI.into(),
+                    location: request.name.clone(),
+                    city: closest_station.name.clone(),
+                    coordinates: Coordinates {
+                        latitude: closest_station.latitude.clone(),
+                        longitude: closest_station.longitude.clone(),
+                    },
+                    temperature: latest_measurement.temperature_200_centimers,
+                    relative_humidity: Some(latest_measurement.relative_humidity_200_centimeters),
+                })
+            }
+            [] => Err(anyhow!("Empty measurement list")),
+        }
     }
 
     fn refresh_interval(&self) -> Duration {
