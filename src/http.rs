@@ -147,13 +147,13 @@ pub fn maybe_authenticate(
         (Some(credentials_store), Some(credentials_presented)) => {
             authenticate(credentials_store, credentials_presented)
         }
+        (Some(_), None) => {
+            trace!("No credentials presented. Unauthorized");
+            Err(Denied::Unauthorized)
+        }
         (None, _) => {
             trace!("No credentials store configured, skipping authentication");
             Ok(Granted::NotRequired)
-        }
-        (_, None) => {
-            trace!("No credentials presented. Unauthorized");
-            Err(Denied::Unauthorized)
         }
     }
 }
