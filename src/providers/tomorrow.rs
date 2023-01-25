@@ -1,6 +1,7 @@
 use crate::providers::cache::{reqwest_cached_body_json, Configuration};
 use crate::providers::units::{Celsius, Coordinates, Ratio};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
+use anyhow::anyhow;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
@@ -78,24 +79,20 @@ impl WeatherProvider for Tomorrow {
             None,
         )?;
 
-        let values = &response
-            .data
-            .timelines
-            .get(0)
-            .expect("Timelines cannot be empty")
-            .intervals
-            .get(0)
-            .expect("Intervals cannot be empty")
-            .values;
-
-        Ok(Weather {
-            source: SOURCE_URI.into(),
-            location: request.name.clone(),
-            city: request.name.clone(),
-            temperature: values.temperature,
-            relative_humidity: Some(values.humidity),
-            coordinates: request.query.clone(),
-        })
+        match &response.data.timelines[..] {
+            [timeline, ..] => match &timeline.intervals[..] {
+                [interval, ..] => Ok(Weather {
+                    source: SOURCE_URI.into(),
+                    location: request.name.clone(),
+                    city: request.name.clone(),
+                    temperature: interval.values.temperature,
+                    relative_humidity: Some(interval.values.humidity),
+                    coordinates: request.query.clone(),
+                }),
+                [] => Err(anyhow!("Empty intervals in response")),
+            },
+            [] => Err(anyhow!("Empty timelines in response")),
+        }
     }
 
     fn refresh_interval(&self) -> Duration {
