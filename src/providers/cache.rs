@@ -1,5 +1,5 @@
 use crate::providers::HttpRequestBodyCache;
-use log::debug;
+use log::{debug, trace};
 use moka::sync::Cache;
 use reqwest::blocking::{Client, Response};
 use reqwest::{Method, Url};
@@ -76,6 +76,7 @@ fn response_to_string(response: Response) -> anyhow::Result<String> {
 }
 
 fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &str) -> anyhow::Result<T> {
+    trace!("Deserializing body {body:?}");
     Ok(serde_json::from_str(&body)?)
 }
 
