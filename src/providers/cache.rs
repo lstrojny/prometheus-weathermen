@@ -35,11 +35,18 @@ pub struct CachedHttpRequest<'a, R: Debug = String> {
     deserialize: fn(string: &str) -> anyhow::Result<R>,
 }
 
+const CONSECUTIVE_FAILURE_COUNT: u32 = 3;
+const EXPONENTIAL_BACKOFF_START_SECS: u64 = 30;
+const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
+
 lazy_static! {
     static ref CIRCUIT_BREAKER: StateMachine<ConsecutiveFailures<Exponential>, ()> = Config::new()
         .failure_policy(consecutive_failures(
-            3,
-            exponential(Duration::from_secs(10), Duration::from_secs(600))
+            CONSECUTIVE_FAILURE_COUNT,
+            exponential(
+                Duration::from_secs(EXPONENTIAL_BACKOFF_START_SECS),
+                Duration::from_secs(EXPONENTIAL_BACKOFF_MAX_SECS)
+            )
         ))
         .build();
 }
