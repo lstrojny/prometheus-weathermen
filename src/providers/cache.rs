@@ -35,7 +35,7 @@ pub struct CachedHttpRequest<'a, R: Debug = String> {
     deserialize: fn(string: &str) -> anyhow::Result<R>,
 }
 
-const CONSECUTIVE_FAILURE_COUNT: u32 = 3;
+const CONSECUTIVE_FAILURE_COUNT: u32 = 2;
 const EXPONENTIAL_BACKOFF_START_SECS: u64 = 30;
 const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
 
@@ -156,7 +156,11 @@ fn request_url<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Result<Respo
         .send()?;
 
     if !response.status().is_success() {
-        return Err(anyhow!("Status code {}", response.status()));
+        return Err(anyhow!(
+            "Request for provider {} return status code {}",
+            request.source,
+            response.status()
+        ));
     }
 
     Ok(response)
