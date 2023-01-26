@@ -1,10 +1,11 @@
-use crate::providers::cache::{reqwest_cached_body_json, Configuration};
+use crate::providers::cache::{reqwest_cached, Configuration, Request};
 use crate::providers::units::{Coordinates, Kelvin, Ratio, ToCelsius};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
 use serde::Serialize;
+use std::fmt::Debug;
 use std::string::ToString;
 use std::time::Duration;
 
@@ -51,14 +52,13 @@ impl WeatherProvider for OpenWeather {
             ],
         )?;
 
-        let response = reqwest_cached_body_json::<OpenWeatherResponse>(
-            SOURCE_URI,
-            cache,
-            client,
-            Method::GET,
+        let response: OpenWeatherResponse = reqwest_cached(Request::new_json_request(
+            &SOURCE_URI,
+            &cache,
+            &client,
+            &Method::GET,
             &url,
-            None,
-        )?;
+        ))?;
 
         Ok(Weather {
             source: SOURCE_URI.into(),
