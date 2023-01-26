@@ -608,6 +608,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "failsafe"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60888d0f510699b3ef8734a045b0d28f4279283d7665acacc68cd7e8ac18e683"
+dependencies = [
+ "futures-core",
+ "parking_lot",
+ "pin-project",
+ "rand",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1523,6 +1535,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
+name = "pin-project"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad29a609b6bcd67fee905812e544992d216af9d755757c05ed2d0e15a74c6ecc"
+dependencies = [
+ "pin-project-internal",
+]
+
+[[package]]
+name = "pin-project-internal"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "069bdb1e05adc7a8990dce9cc75370895fbe4e3d58b9b73bf1aee56359344a55"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1639,11 +1671,13 @@ dependencies = [
  "clap-verbosity-flag",
  "const_format",
  "csv",
+ "failsafe",
  "figment",
  "geo",
  "hex",
  "hmac",
  "humantime-serde",
+ "lazy_static",
  "log",
  "moka",
  "openssl",

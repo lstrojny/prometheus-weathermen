@@ -1,4 +1,4 @@
-use crate::providers::cache::{reqwest_cached, Configuration, Request};
+use crate::providers::cache::{reqwest_cached, CachedHttpRequest, Configuration};
 use crate::providers::units::{Celsius, Coordinates, Ratio};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use anyhow::anyhow;
@@ -70,10 +70,10 @@ impl WeatherProvider for Tomorrow {
             ],
         )?;
 
-        let response: TomorrowResponse = reqwest_cached(Request::new_json_request(
+        let response: TomorrowResponse = reqwest_cached(&CachedHttpRequest::new_json_request(
             SOURCE_URI,
-            cache,
             client,
+            cache,
             &Method::GET,
             &url,
         ))?;

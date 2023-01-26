@@ -1,4 +1,4 @@
-use crate::providers::cache::{reqwest_cached, Configuration, Request};
+use crate::providers::cache::{reqwest_cached, CachedHttpRequest, Configuration};
 use crate::providers::units::{Celsius, Coordinate, Coordinates, Ratio};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use anyhow::anyhow;
@@ -216,10 +216,10 @@ impl WeatherProvider for DeutscherWetterdienst {
         cache: &HttpRequestBodyCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        let station_csv = reqwest_cached(Request::new(
+        let station_csv = reqwest_cached(&CachedHttpRequest::new(
             SOURCE_URI,
-            cache,
             client,
+            cache,
             &Method::GET,
             &Url::parse(STATION_LIST_URL)?,
             |r| Ok(r.text_with_charset("iso-8859-15")?),

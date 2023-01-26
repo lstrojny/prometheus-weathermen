@@ -1,4 +1,8 @@
 use crate::providers::HttpRequestBodyCache;
+use anyhow::anyhow;
+use failsafe::backoff::{exponential, Exponential};
+use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
+use failsafe::{CircuitBreaker, Config, Error, StateMachine};
 use log::{debug, trace};
 use moka::sync::Cache;
 use reqwest::blocking::{Client, Response};
@@ -21,32 +25,41 @@ const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
-pub struct Request<'a, R: Debug = String> {
-    pub source: &'a str,
-    pub cache: &'a HttpRequestBodyCache,
-    pub client: &'a Client,
-    pub method: &'a Method,
-    pub url: &'a Url,
-    pub to_string: fn(response: Response) -> anyhow::Result<String>,
-    pub deserialize: fn(string: &str) -> anyhow::Result<R>,
+pub struct CachedHttpRequest<'a, R: Debug = String> {
+    source: &'a str,
+    client: &'a Client,
+    cache: &'a HttpRequestBodyCache,
+    method: &'a Method,
+    url: &'a Url,
+    to_string: fn(response: Response) -> anyhow::Result<String>,
+    deserialize: fn(string: &str) -> anyhow::Result<R>,
 }
 
-impl Request<'_> {
+lazy_static! {
+    static ref CIRCUIT_BREAKER: StateMachine<ConsecutiveFailures<Exponential>, ()> = Config::new()
+        .failure_policy(consecutive_failures(
+            3,
+            exponential(Duration::from_secs(10), Duration::from_secs(600))
+        ))
+        .build();
+}
+
+impl CachedHttpRequest<'_> {
     pub fn new<'a, T: Debug>(
         source: &'a str,
-        cache: &'a HttpRequestBodyCache,
         client: &'a Client,
+        cache: &'a HttpRequestBodyCache,
         method: &'a Method,
         url: &'a Url,
         to_string: fn(response: Response) -> anyhow::Result<String>,
         deserialize: fn(string: &str) -> anyhow::Result<T>,
-    ) -> Request<'a, T> {
-        Request {
+    ) -> CachedHttpRequest<'a, T> {
+        CachedHttpRequest {
             source,
-            url,
-            method,
-            cache,
             client,
+            cache,
+            method,
+            url,
             to_string,
             deserialize,
         }
@@ -54,15 +67,15 @@ impl Request<'_> {
 
     pub fn new_json_request<'a, T: Debug + DeserializeOwned>(
         source: &'a str,
-        cache: &'a HttpRequestBodyCache,
         client: &'a Client,
+        cache: &'a HttpRequestBodyCache,
         method: &'a Method,
         url: &'a Url,
-    ) -> Request<'a, T> {
-        Request::new::<T>(
+    ) -> CachedHttpRequest<'a, T> {
+        CachedHttpRequest::new::<T>(
             source,
-            cache,
             client,
+            cache,
             method,
             url,
             response_to_string,
@@ -77,10 +90,10 @@ fn response_to_string(response: Response) -> anyhow::Result<String> {
 
 fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &str) -> anyhow::Result<T> {
     trace!("Deserializing body {body:?}");
-    Ok(serde_json::from_str(&body)?)
+    Ok(serde_json::from_str(body)?)
 }
 
-pub fn reqwest_cached<R: Debug>(request: Request<R>) -> anyhow::Result<R> {
+pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Result<R> {
     let key = (request.method.clone(), request.url.clone());
     let value = request.cache.get(&key);
 
@@ -112,16 +125,32 @@ pub fn reqwest_cached<R: Debug>(request: Request<R>) -> anyhow::Result<R> {
         request.method, request.url
     );
 
+    match (*CIRCUIT_BREAKER).call(|| request_url(request)) {
+        Err(Error::Inner(e)) => Err(anyhow!(e)),
+        Err(Error::Rejected) => Err(anyhow!("Circuit breaker active and prevented request")),
+        Ok(response) => {
+            debug!("Status {}", response.status());
+
+            let body = (request.to_string)(response)?;
+
+            request.cache.insert(key, body.clone());
+
+            let des = (request.deserialize)(&body)?;
+
+            Ok(des)
+        }
+    }
+}
+
+fn request_url<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Result<Response> {
     let response = request
         .client
         .request(request.method.clone(), request.url.clone())
         .send()?;
 
-    let body = (request.to_string)(response)?;
+    if !response.status().is_success() {
+        return Err(anyhow!("Status code {}", response.status()));
+    }
 
-    request.cache.insert(key, body.clone());
-
-    let des = (request.deserialize)(&body)?;
-
-    Ok(des)
+    Ok(response)
 }
