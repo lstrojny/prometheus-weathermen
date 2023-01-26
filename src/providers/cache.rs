@@ -3,6 +3,7 @@ use log::debug;
 use moka::sync::Cache;
 use reqwest::blocking::{Client, Response};
 use reqwest::{Method, Url};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::time::Duration;
@@ -51,7 +52,7 @@ impl Request<'_> {
         }
     }
 
-    pub fn new_json_request<'a, T: Debug + for<'b> serde::Deserialize<'b>>(
+    pub fn new_json_request<'a, T: Debug + DeserializeOwned>(
         source: &'a str,
         cache: &'a HttpRequestBodyCache,
         client: &'a Client,
@@ -74,9 +75,7 @@ fn response_to_string(response: Response) -> anyhow::Result<String> {
     Ok(response.text()?)
 }
 
-fn serde_deserialize_body<T: Debug + for<'a> serde::Deserialize<'a>>(
-    body: &str,
-) -> anyhow::Result<T> {
+fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &str) -> anyhow::Result<T> {
     Ok(serde_json::from_str(&body)?)
 }
 
