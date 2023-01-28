@@ -12,7 +12,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::Mutex;
+use std::sync::RwLock;
 use std::time::Duration;
 
 pub type HttpRequestBody = Cache<(Method, Url), String>;
@@ -44,8 +44,8 @@ const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
 
 type HttpCircuitBreaker = StateMachine<ConsecutiveFailures<Exponential>, ()>;
 
-static CIRCUIT_BREAKER_REGISTRY: Lazy<Mutex<HashMap<String, HttpCircuitBreaker>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static CIRCUIT_BREAKER_REGISTRY: Lazy<RwLock<HashMap<String, HttpCircuitBreaker>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 impl HttpCacheRequest<'_> {
     pub fn new<'a, T: Debug>(
@@ -135,7 +135,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
 
     // Separate scope so read lock is dropped at the end if circuit breaker does not yet exist
     {
-        let circuit_breaker_registry_ro = CIRCUIT_BREAKER_REGISTRY.lock().expect("Poisoned lock");
+        let circuit_breaker_registry_ro = CIRCUIT_BREAKER_REGISTRY.read().expect("Poisoned lock");
 
         trace!("Read lock acquired for {:?}", cicruit_breaker_scope);
 
@@ -154,7 +154,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
         );
 
         let mut circuit_breaker_registry_rw =
-            CIRCUIT_BREAKER_REGISTRY.lock().expect("Poisoned lock");
+            CIRCUIT_BREAKER_REGISTRY.write().expect("Poisoned lock");
         trace!(
             "Write lock acquired to instantiate circuit breaker {:?}",
             cicruit_breaker_scope
@@ -194,7 +194,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
         cicruit_breaker_scope
     );
     let circuit_breaker_registry_ro = CIRCUIT_BREAKER_REGISTRY
-        .lock()
+        .read()
         .expect("Lock should not be poisoned");
     trace!(
         "Read lock acquired after circuit breaker {:?} was instantiated",
@@ -222,7 +222,7 @@ fn request_url_with_circuit_breaker<R: Debug>(
         Ok(response) => {
             trace!(
                 "Request to {:?} return with status code {:?}",
-                request.url,
+                request.url.to_string(),
                 response.status()
             );
 
