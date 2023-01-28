@@ -1,8 +1,10 @@
 use crate::providers::HttpRequestBodyCache;
 use anyhow::anyhow;
+use failsafe::backoff::{exponential, Exponential};
+use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
+use failsafe::{CircuitBreaker, Config, Error, StateMachine};
 use log::{debug, trace};
 use moka::sync::Cache;
-use recloser::{Error, Recloser};
 use reqwest::blocking::{Client, Response};
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
@@ -35,8 +37,14 @@ pub struct CachedHttpRequest<'a, R: Debug = String> {
     deserialize: fn(string: &str) -> anyhow::Result<R>,
 }
 
+const CONSECUTIVE_FAILURE_COUNT: u32 = 3;
+const EXPONENTIAL_BACKOFF_START_SECS: u64 = 30;
+const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
+
+type HttpCircuitBreaker = StateMachine<ConsecutiveFailures<Exponential>, ()>;
+
 lazy_static! {
-    static ref CIRCUIT_BREAKER_REGISTRY: Arc<Mutex<HashMap<String, Recloser>>> =
+    static ref CIRCUIT_BREAKER_REGISTRY: Arc<Mutex<HashMap<String, HttpCircuitBreaker>>> =
         Arc::new(Mutex::new(HashMap::new()));
 }
 
@@ -121,81 +129,101 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         request.method, request.url
     );
 
-    let hm_ref = Arc::clone(&CIRCUIT_BREAKER_REGISTRY);
-    let cb_scope = request
+    let circuit_breaker_registry_ref = Arc::clone(&CIRCUIT_BREAKER_REGISTRY);
+    let cicruit_breaker_scope = request
         .url
         .host_str()
         .ok_or_else(|| anyhow!("Could not extract host from URL"))?;
 
-    // Read lock must be dropped if circuit breaker does not yet exist
+    // Separate scope so read lock is dropped at the end if circuit breaker does not yet exist
     {
-        let cb_hm_r = hm_ref.lock().expect("Poisoned lock");
+        let circuit_breaker_registry_ro =
+            circuit_breaker_registry_ref.lock().expect("Poisoned lock");
 
-        trace!("Read lock acquired for {:?}", cb_scope);
+        trace!("Read lock acquired for {:?}", cicruit_breaker_scope);
 
-        match cb_hm_r.get(cb_scope) {
-            Some(cb) => return request_url_with_circuit_breaker(cb, request, &key),
-            None => (),
-        };
+        if let Some(cb) = circuit_breaker_registry_ro.get(cicruit_breaker_scope) {
+            return request_url_with_circuit_breaker(cicruit_breaker_scope, cb, request, &key);
+        }
     }
 
-    // Write lock needs to be dropped at the end of this scope
+    // Separate scope so write lock is dropped at the end
     {
-        trace!("Trying to acquire write lock for {:?}", cb_scope);
+        trace!(
+            "Trying to acquire write lock to instantiate circuit breaker {:?}",
+            cicruit_breaker_scope
+        );
 
-        let mut cb_hm_rw = hm_ref.lock().expect("Poisoned lock");
-        trace!("Write lock acquired for {:?}", cb_scope);
+        let mut circuit_breaker_registry_rw =
+            circuit_breaker_registry_ref.lock().expect("Poisoned lock");
+        trace!(
+            "Write lock acquired to instantiate circuit breaker {:?}",
+            cicruit_breaker_scope
+        );
 
-        if cb_hm_rw.contains_key(cb_scope) {
+        if circuit_breaker_registry_rw.contains_key(cicruit_breaker_scope) {
             trace!(
-                "Circuit breaker already created for {:?}, skipping",
-                cb_scope
+                "Circuit breaker {:?} already instantiated, skipping",
+                cicruit_breaker_scope
             );
         } else {
             trace!(
-                "Circuit breaker not yet created for {:?}, creating",
-                cb_scope
+                "Circuit breaker {:?} not yet instantiated, instantiating",
+                cicruit_breaker_scope
             );
 
-            let c = Recloser::custom()
-                .error_rate(0.5)
-                .closed_len(2)
-                .half_open_len(1)
-                .open_wait(Duration::from_secs(60))
+            let circuit_breaker = Config::new()
+                .failure_policy(consecutive_failures(
+                    CONSECUTIVE_FAILURE_COUNT,
+                    exponential(
+                        Duration::from_secs(EXPONENTIAL_BACKOFF_START_SECS),
+                        Duration::from_secs(EXPONENTIAL_BACKOFF_MAX_SECS),
+                    ),
+                ))
                 .build();
 
-            cb_hm_rw.insert(cb_scope.to_string(), c);
+            circuit_breaker_registry_rw.insert(cicruit_breaker_scope.to_string(), circuit_breaker);
 
-            trace!("Circuit breaker created for {:?}", cb_scope);
+            trace!("Circuit breaker {:?} instantiated", cicruit_breaker_scope);
         }
     }
 
     trace!(
-        "Trying to acquire read lock after circuit breaker creation for {:?}",
-        cb_scope
+        "Trying to acquire read lock after circuit breaker {:?} was instantiated",
+        cicruit_breaker_scope
     );
-    let cb_hm_r = hm_ref.lock().expect("Lock should not be poisoned");
+    let circuit_breaker_registry_ro = circuit_breaker_registry_ref
+        .lock()
+        .expect("Lock should not be poisoned");
     trace!(
-        "Read lock acquired after circuit breaker creation for {:?}",
-        cb_scope
+        "Read lock acquired after circuit breaker {:?} was instantiated",
+        cicruit_breaker_scope
     );
-    let cb = cb_hm_r
-        .get(cb_scope)
+    let circuit_breaker = circuit_breaker_registry_ro
+        .get(cicruit_breaker_scope)
         .expect("Circuit breaker must now exist");
 
-    request_url_with_circuit_breaker(cb, request, &key)
+    request_url_with_circuit_breaker(cicruit_breaker_scope, circuit_breaker, request, &key)
 }
 
 fn request_url_with_circuit_breaker<R: Debug>(
-    cb: &Recloser,
+    circuit_breaker_scope: &str,
+    circuit_breaker: &HttpCircuitBreaker,
     request: &CachedHttpRequest<R>,
     key: &(Method, Url),
 ) -> anyhow::Result<R> {
-    match cb.call(|| request_url(request)) {
+    match circuit_breaker.call(|| request_url(request)) {
         Err(Error::Inner(e)) => Err(anyhow!(e)),
-        Err(Error::Rejected) => Err(anyhow!("Circuit breaker active and prevented request")),
+        Err(Error::Rejected) => Err(anyhow!(
+            "Circuit breaker {:?} is open and prevented request",
+            circuit_breaker_scope
+        )),
         Ok(response) => {
-            debug!("Status {}", response.status());
+            trace!(
+                "Request to {:?} return with status code {:?}",
+                request.url,
+                response.status()
+            );
 
             let body = (request.to_string)(response)?;
 
