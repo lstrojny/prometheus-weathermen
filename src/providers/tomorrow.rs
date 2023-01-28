@@ -1,6 +1,6 @@
-use crate::providers::cache::{reqwest_cached_body_json, Configuration};
+use crate::providers::http_request::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Celsius, Coordinates, Ratio};
-use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{HttpRequestCache, Weather, WeatherProvider, WeatherRequest};
 use anyhow::anyhow;
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
@@ -51,7 +51,7 @@ impl WeatherProvider for Tomorrow {
     fn for_coordinates(
         &self,
         client: &Client,
-        cache: &HttpRequestBodyCache,
+        cache: &HttpRequestCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         let url = Url::parse_with_params(
@@ -70,14 +70,13 @@ impl WeatherProvider for Tomorrow {
             ],
         )?;
 
-        let response = reqwest_cached_body_json::<TomorrowResponse>(
+        let response: TomorrowResponse = request_cached(&HttpCacheRequest::new_json_request(
             SOURCE_URI,
-            cache,
             client,
-            Method::GET,
+            cache,
+            &Method::GET,
             &url,
-            None,
-        )?;
+        ))?;
 
         match &response.data.timelines[..] {
             [timeline, ..] => match &timeline.intervals[..] {

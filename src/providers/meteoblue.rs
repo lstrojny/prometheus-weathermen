@@ -1,6 +1,6 @@
-use crate::providers::cache::{reqwest_cached_body_json, Configuration};
+use crate::providers::http_request::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Celsius, Coordinates};
-use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{HttpRequestCache, Weather, WeatherProvider, WeatherRequest};
 use hmac::{Hmac, Mac};
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
@@ -46,7 +46,7 @@ impl WeatherProvider for Meteoblue {
     fn for_coordinates(
         &self,
         client: &Client,
-        cache: &HttpRequestBodyCache,
+        cache: &HttpRequestCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         let url = Url::parse_with_params(
@@ -74,14 +74,13 @@ impl WeatherProvider for Meteoblue {
 
         let signed_url = Url::parse_with_params(url.as_str(), &[("sig", sig)])?;
 
-        let response: MeteoblueResponse = reqwest_cached_body_json::<MeteoblueResponse>(
+        let response: MeteoblueResponse = request_cached(&HttpCacheRequest::new_json_request(
             SOURCE_URI,
-            cache,
             client,
-            Method::GET,
+            cache,
+            &Method::GET,
             &signed_url,
-            None,
-        )?;
+        ))?;
 
         Ok(Weather {
             source: SOURCE_URI.into(),

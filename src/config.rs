@@ -1,5 +1,5 @@
 use crate::providers::units::Coordinates;
-use crate::providers::HttpRequestBodyCache;
+use crate::providers::HttpRequestCache;
 use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use const_format::concatcp;
@@ -105,7 +105,7 @@ pub struct Task {
     pub provider: Arc<dyn WeatherProvider + Send + Sync>,
     pub request: WeatherRequest<Coordinates>,
     pub client: Client,
-    pub cache: HttpRequestBodyCache,
+    pub cache: HttpRequestCache,
 }
 
 pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {

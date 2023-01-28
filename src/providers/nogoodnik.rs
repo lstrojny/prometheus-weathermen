@@ -1,8 +1,10 @@
+use crate::providers::http_request::{request_cached, HttpCacheRequest};
 use crate::providers::units::Coordinates;
-use crate::providers::HttpRequestBodyCache;
+use crate::providers::HttpRequestCache;
 use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::format_err;
 use reqwest::blocking::Client;
+use reqwest::{Method, Url};
 use rocket::serde::Serialize;
 use serde::Deserialize;
 use std::time::Duration;
@@ -19,10 +21,20 @@ impl WeatherProvider for Nogoodnik {
 
     fn for_coordinates(
         &self,
-        _client: &Client,
-        _cache: &HttpRequestBodyCache,
+        client: &Client,
+        cache: &HttpRequestCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
+        let _response = request_cached(&HttpCacheRequest::new(
+            SOURCE_URI,
+            client,
+            cache,
+            &Method::GET,
+            &Url::parse("http://example.org/404")?,
+            |r| Ok(r.text()?),
+            |v| Ok(v.to_string()),
+        ))?;
+
         Err(format_err!("This provider is no good and always fails"))
     }
 

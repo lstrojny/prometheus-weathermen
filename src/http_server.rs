@@ -187,7 +187,7 @@ fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Gran
 #[cfg(test)]
 mod tests {
     use crate::config::CredentialsStore;
-    use crate::http::{maybe_authenticate, Denied, Granted};
+    use crate::http_server::{maybe_authenticate, Denied, Granted};
     use rocket_basicauth::BasicAuth;
 
     #[test]

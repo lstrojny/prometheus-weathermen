@@ -8,7 +8,7 @@
 #![allow(clippy::no_effect_underscore_binding)]
 
 use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};
-use crate::http::{index, metrics};
+use crate::http_server::{index, metrics};
 use clap::{arg, command, Parser};
 use log::error;
 use rocket::{launch, routes};
@@ -17,7 +17,7 @@ use std::process::exit;
 use tokio::task;
 
 mod config;
-mod http;
+mod http_server;
 mod logging;
 mod prometheus;
 mod providers;
