@@ -1,15 +1,15 @@
 use crate::providers::HttpRequestBodyCache;
 use anyhow::anyhow;
-use failsafe::backoff::{exponential, Exponential};
-use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
-use failsafe::{CircuitBreaker, Config, Error, StateMachine};
 use log::{debug, trace};
 use moka::sync::Cache;
+use recloser::{Error, Recloser};
 use reqwest::blocking::{Client, Response};
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub type HttpRequestBody = Cache<(Method, Url), String>;
@@ -35,20 +35,9 @@ pub struct CachedHttpRequest<'a, R: Debug = String> {
     deserialize: fn(string: &str) -> anyhow::Result<R>,
 }
 
-const CONSECUTIVE_FAILURE_COUNT: u32 = 2;
-const EXPONENTIAL_BACKOFF_START_SECS: u64 = 30;
-const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
-
 lazy_static! {
-    static ref CIRCUIT_BREAKER: StateMachine<ConsecutiveFailures<Exponential>, ()> = Config::new()
-        .failure_policy(consecutive_failures(
-            CONSECUTIVE_FAILURE_COUNT,
-            exponential(
-                Duration::from_secs(EXPONENTIAL_BACKOFF_START_SECS),
-                Duration::from_secs(EXPONENTIAL_BACKOFF_MAX_SECS)
-            )
-        ))
-        .build();
+    static ref CIRCUIT_BREAKER_REGISTRY: Arc<Mutex<HashMap<String, Recloser>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 }
 
 impl CachedHttpRequest<'_> {
@@ -132,7 +121,77 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         request.method, request.url
     );
 
-    match (*CIRCUIT_BREAKER).call(|| request_url(request)) {
+    let hm_ref = Arc::clone(&CIRCUIT_BREAKER_REGISTRY);
+    let cb_scope = request
+        .url
+        .host_str()
+        .ok_or_else(|| anyhow!("Could not extract host from URL"))?;
+
+    {
+        let cb_hm_r = hm_ref.lock().expect("Poisoned lock");
+
+        trace!("Read lock acquired for {:?}", cb_scope);
+
+        if cb_hm_r.contains_key(cb_scope) {
+            let cb = cb_hm_r.get(cb_scope).expect("Checked before");
+
+            return request_url_with_circuit_breaker(cb, request, &key);
+        }
+    }
+
+    trace!("Trying to acquire write lock for {:?}", cb_scope);
+
+    // Write lock needs to be dropped at the end of this scope
+    {
+        let mut cb_hm_rw = hm_ref.lock().expect("Poisoned lock");
+        trace!("Write lock acquired for {:?}", cb_scope);
+
+        if cb_hm_rw.contains_key(cb_scope) {
+            trace!(
+                "Circuit breaker already created for {:?}, skipping",
+                cb_scope
+            );
+        } else {
+            trace!(
+                "Circuit breaker not yet created for {:?}, creating",
+                cb_scope
+            );
+
+            let c = Recloser::custom()
+                .error_rate(0.5)
+                .closed_len(2)
+                .half_open_len(1)
+                .open_wait(Duration::from_secs(60))
+                .build();
+
+            cb_hm_rw.insert(cb_scope.to_string(), c);
+
+            trace!("Circuit breaker created for {:?}", cb_scope);
+        }
+    }
+
+    trace!(
+        "Trying to acquire read lock after circuit breaker creation for {:?}",
+        cb_scope
+    );
+    let cb_hm_r = hm_ref.lock().expect("Lock should not be poisoned");
+    trace!(
+        "Read lock acquired after circuit breaker creation for {:?}",
+        cb_scope
+    );
+    let cb = cb_hm_r
+        .get(cb_scope)
+        .expect("Circuit breaker must now exist");
+
+    request_url_with_circuit_breaker(cb, request, &key)
+}
+
+fn request_url_with_circuit_breaker<R: Debug>(
+    cb: &Recloser,
+    request: &CachedHttpRequest<R>,
+    key: &(Method, Url),
+) -> anyhow::Result<R> {
+    match cb.call(|| request_url(request)) {
         Err(Error::Inner(e)) => Err(anyhow!(e)),
         Err(Error::Rejected) => Err(anyhow!("Circuit breaker active and prevented request")),
         Ok(response) => {
@@ -140,7 +199,7 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
 
             let body = (request.to_string)(response)?;
 
-            request.cache.insert(key, body.clone());
+            request.cache.insert(key.clone(), body.clone());
 
             let des = (request.deserialize)(&body)?;
 
