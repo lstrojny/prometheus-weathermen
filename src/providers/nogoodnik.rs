@@ -1,6 +1,6 @@
-use crate::providers::cache::{request_cached, HttpCacheRequest};
+use crate::providers::http_request::{request_cached, HttpCacheRequest};
 use crate::providers::units::Coordinates;
-use crate::providers::HttpRequestBodyCache;
+use crate::providers::HttpRequestCache;
 use crate::providers::{Weather, WeatherProvider, WeatherRequest};
 use anyhow::format_err;
 use reqwest::blocking::Client;
@@ -22,7 +22,7 @@ impl WeatherProvider for Nogoodnik {
     fn for_coordinates(
         &self,
         client: &Client,
-        cache: &HttpRequestBodyCache,
+        cache: &HttpRequestCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
         let _response = request_cached(&HttpCacheRequest::new(

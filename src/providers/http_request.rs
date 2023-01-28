@@ -1,10 +1,10 @@
-use crate::providers::HttpRequestBodyCache;
+use crate::providers::HttpRequestCache;
 use anyhow::anyhow;
 use failsafe::backoff::{exponential, Exponential};
 use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
 use failsafe::{CircuitBreaker, Config, Error, StateMachine};
 use log::{debug, trace};
-use moka::sync::Cache;
+use moka::sync::Cache as MokaCache;
 use once_cell::sync::Lazy;
 use reqwest::blocking::{Client, Response};
 use reqwest::{Method, Url};
@@ -15,7 +15,7 @@ use std::fmt::Debug;
 use std::sync::RwLock;
 use std::time::Duration;
 
-pub type HttpRequestBody = Cache<(Method, Url), String>;
+pub type Cache = MokaCache<(Method, Url), String>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -31,7 +31,7 @@ const fn default_refresh_interval() -> Duration {
 pub struct HttpCacheRequest<'a, R: Debug = String> {
     source: &'a str,
     client: &'a Client,
-    cache: &'a HttpRequestBodyCache,
+    cache: &'a HttpRequestCache,
     method: &'a Method,
     url: &'a Url,
     to_string: fn(response: Response) -> anyhow::Result<String>,
@@ -51,7 +51,7 @@ impl HttpCacheRequest<'_> {
     pub fn new<'a, T: Debug>(
         source: &'a str,
         client: &'a Client,
-        cache: &'a HttpRequestBodyCache,
+        cache: &'a HttpRequestCache,
         method: &'a Method,
         url: &'a Url,
         to_string: fn(response: Response) -> anyhow::Result<String>,
@@ -71,7 +71,7 @@ impl HttpCacheRequest<'_> {
     pub fn new_json_request<'a, T: Debug + DeserializeOwned>(
         source: &'a str,
         client: &'a Client,
-        cache: &'a HttpRequestBodyCache,
+        cache: &'a HttpRequestCache,
         method: &'a Method,
         url: &'a Url,
     ) -> HttpCacheRequest<'a, T> {

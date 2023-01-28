@@ -1,5 +1,5 @@
-mod cache;
 mod deutscher_wetterdienst;
+mod http_request;
 mod meteoblue;
 mod nogoodnik;
 mod open_weather;
@@ -81,7 +81,7 @@ pub trait WeatherProvider: std::fmt::Debug {
     fn for_coordinates(
         &self,
         client: &Client,
-        cache: &HttpRequestBodyCache,
+        cache: &HttpRequestCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather>;
 
@@ -91,4 +91,4 @@ pub trait WeatherProvider: std::fmt::Debug {
     }
 }
 
-pub type HttpRequestBodyCache = cache::HttpRequestBody;
+pub type HttpRequestCache = http_request::Cache;
