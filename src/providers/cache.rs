@@ -127,6 +127,7 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         .host_str()
         .ok_or_else(|| anyhow!("Could not extract host from URL"))?;
 
+    // Read lock must be dropped if circuit breaker does not yet exist
     {
         let cb_hm_r = hm_ref.lock().expect("Poisoned lock");
 
@@ -139,10 +140,10 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         }
     }
 
-    trace!("Trying to acquire write lock for {:?}", cb_scope);
-
     // Write lock needs to be dropped at the end of this scope
     {
+        trace!("Trying to acquire write lock for {:?}", cb_scope);
+
         let mut cb_hm_rw = hm_ref.lock().expect("Poisoned lock");
         trace!("Write lock acquired for {:?}", cb_scope);
 
