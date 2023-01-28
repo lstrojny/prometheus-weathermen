@@ -142,6 +142,8 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
         if let Some(cb) = circuit_breaker_registry_ro.get(cicruit_breaker_scope) {
             return request_url_with_circuit_breaker(cicruit_breaker_scope, cb, request, &key);
         }
+
+        drop(circuit_breaker_registry_ro);
     }
 
     // Separate scope so write lock is dropped at the end
@@ -183,6 +185,8 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
 
             trace!("Circuit breaker {:?} instantiated", cicruit_breaker_scope);
         }
+
+        drop(circuit_breaker_registry_rw);
     }
 
     trace!(
