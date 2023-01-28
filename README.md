@@ -27,6 +27,23 @@ You need to register an account for those providers that require an API key.
 
 ### Installation
 
+#### Pre-built containers
+
+Readymade containers are available for `linux/amd64`, `linux/arm64` and `linux/arm/v7`. Download
+[weathermen.toml.dist](weathermen.toml.dist) to `weathermen.toml` into the current folder and adjust the configuration.
+
+This is how to run the container using Docker:
+
+```
+docker run -p 36333 \
+    -v $(pwd)/weathermen.toml:/etc/prometheus-weathermen/weathermen.toml \
+    lstrojny/prometheus-weathermen:latest
+```
+
+The container is also available from the GitHub container registry via `ghcr.io/lstrojny/prometheus-weathermen`.
+
+#### Pre-built binaries
+
 Go to [the latest release](https://github.com/lstrojny/prometheus-weathermen/releases/latest) and download the
 appropriate binary for your platform.
 
@@ -66,6 +83,7 @@ The corresponding env variable would be `PROMW_PROVIDER__OPEN_WEATHER__API_KEY`.
 
 ### License
 
-This project is dual-licensed under MIT and Apache 2.0. You can choose between one of them if you use this work.
+This project is distributed under either:
 
-`SPDX-License-Identifier: MIT OR Apache-2.0`
+-   The Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+-   The MIT license ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
