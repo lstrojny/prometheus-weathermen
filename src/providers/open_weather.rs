@@ -1,4 +1,4 @@
-use crate::providers::cache::{reqwest_cached, CachedHttpRequest, Configuration};
+use crate::providers::cache::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Coordinates, Kelvin, Ratio, ToCelsius};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use reqwest::blocking::Client;
@@ -52,7 +52,7 @@ impl WeatherProvider for OpenWeather {
             ],
         )?;
 
-        let response: OpenWeatherResponse = reqwest_cached(&CachedHttpRequest::new_json_request(
+        let response: OpenWeatherResponse = request_cached(&HttpCacheRequest::new_json_request(
             SOURCE_URI,
             client,
             cache,

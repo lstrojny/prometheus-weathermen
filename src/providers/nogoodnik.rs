@@ -1,4 +1,4 @@
-use crate::providers::cache::{reqwest_cached, CachedHttpRequest};
+use crate::providers::cache::{request_cached, HttpCacheRequest};
 use crate::providers::units::Coordinates;
 use crate::providers::HttpRequestBodyCache;
 use crate::providers::{Weather, WeatherProvider, WeatherRequest};
@@ -25,7 +25,7 @@ impl WeatherProvider for Nogoodnik {
         cache: &HttpRequestBodyCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        let _response = reqwest_cached(&CachedHttpRequest::new(
+        let _response = request_cached(&HttpCacheRequest::new(
             SOURCE_URI,
             client,
             cache,

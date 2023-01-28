@@ -1,4 +1,4 @@
-use crate::providers::cache::{reqwest_cached, CachedHttpRequest, Configuration};
+use crate::providers::cache::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Celsius, Coordinates};
 use crate::providers::{HttpRequestBodyCache, Weather, WeatherProvider, WeatherRequest};
 use hmac::{Hmac, Mac};
@@ -74,7 +74,7 @@ impl WeatherProvider for Meteoblue {
 
         let signed_url = Url::parse_with_params(url.as_str(), &[("sig", sig)])?;
 
-        let response: MeteoblueResponse = reqwest_cached(&CachedHttpRequest::new_json_request(
+        let response: MeteoblueResponse = request_cached(&HttpCacheRequest::new_json_request(
             SOURCE_URI,
             client,
             cache,

@@ -28,7 +28,7 @@ const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
-pub struct CachedHttpRequest<'a, R: Debug = String> {
+pub struct HttpCacheRequest<'a, R: Debug = String> {
     source: &'a str,
     client: &'a Client,
     cache: &'a HttpRequestBodyCache,
@@ -47,7 +47,7 @@ type HttpCircuitBreaker = StateMachine<ConsecutiveFailures<Exponential>, ()>;
 static CIRCUIT_BREAKER_REGISTRY: Lazy<Mutex<HashMap<String, HttpCircuitBreaker>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-impl CachedHttpRequest<'_> {
+impl HttpCacheRequest<'_> {
     pub fn new<'a, T: Debug>(
         source: &'a str,
         client: &'a Client,
@@ -56,8 +56,8 @@ impl CachedHttpRequest<'_> {
         url: &'a Url,
         to_string: fn(response: Response) -> anyhow::Result<String>,
         deserialize: fn(string: &str) -> anyhow::Result<T>,
-    ) -> CachedHttpRequest<'a, T> {
-        CachedHttpRequest {
+    ) -> HttpCacheRequest<'a, T> {
+        HttpCacheRequest {
             source,
             client,
             cache,
@@ -74,8 +74,8 @@ impl CachedHttpRequest<'_> {
         cache: &'a HttpRequestBodyCache,
         method: &'a Method,
         url: &'a Url,
-    ) -> CachedHttpRequest<'a, T> {
-        CachedHttpRequest::new::<T>(
+    ) -> HttpCacheRequest<'a, T> {
+        HttpCacheRequest::new::<T>(
             source,
             client,
             cache,
@@ -96,7 +96,7 @@ fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &str) -> anyhow::Re
     Ok(serde_json::from_str(body)?)
 }
 
-pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Result<R> {
+pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result<R> {
     let key = (request.method.clone(), request.url.clone());
     let value = request.cache.get(&key);
 
@@ -206,7 +206,7 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
 fn request_url_with_circuit_breaker<R: Debug>(
     circuit_breaker_scope: &str,
     circuit_breaker: &HttpCircuitBreaker,
-    request: &CachedHttpRequest<R>,
+    request: &HttpCacheRequest<R>,
     key: &(Method, Url),
 ) -> anyhow::Result<R> {
     match circuit_breaker.call(|| request_url(request)) {
@@ -233,7 +233,7 @@ fn request_url_with_circuit_breaker<R: Debug>(
     }
 }
 
-fn request_url<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Result<Response> {
+fn request_url<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result<Response> {
     let response = request
         .client
         .request(request.method.clone(), request.url.clone())
