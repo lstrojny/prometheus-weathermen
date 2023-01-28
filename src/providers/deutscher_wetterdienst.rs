@@ -216,17 +216,16 @@ impl WeatherProvider for DeutscherWetterdienst {
         cache: &HttpRequestCache,
         request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        let station_csv = request_cached(&HttpCacheRequest::new(
+        let stations = request_cached(&HttpCacheRequest::new(
             SOURCE_URI,
             client,
             cache,
             &Method::GET,
             &Url::parse(STATION_LIST_URL)?,
             |r| Ok(r.text_with_charset("iso-8859-15")?),
-            |b| Ok(b.to_string()),
+            |b| Ok(parse_weather_station_list_csv(b)),
         ))?;
 
-        let stations = parse_weather_station_list_csv(&station_csv);
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
         trace!("Found closest weather station {:?}", closest_station);
         let measurement_csv =
