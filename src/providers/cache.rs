@@ -133,11 +133,10 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
 
         trace!("Read lock acquired for {:?}", cb_scope);
 
-        if cb_hm_r.contains_key(cb_scope) {
-            let cb = cb_hm_r.get(cb_scope).expect("Checked before");
-
-            return request_url_with_circuit_breaker(cb, request, &key);
-        }
+        match cb_hm_r.get(cb_scope) {
+            Some(cb) => return request_url_with_circuit_breaker(cb, request, &key),
+            None => (),
+        };
     }
 
     // Write lock needs to be dropped at the end of this scope
