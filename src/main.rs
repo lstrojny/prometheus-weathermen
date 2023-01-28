@@ -7,9 +7,6 @@
 #![warn(clippy::unwrap_used)]
 #![allow(clippy::no_effect_underscore_binding)]
 
-#[macro_use]
-extern crate lazy_static;
-
 use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};
 use crate::http::{index, metrics};
 use clap::{arg, command, Parser};

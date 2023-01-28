@@ -5,6 +5,7 @@ use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
 use failsafe::{CircuitBreaker, Config, Error, StateMachine};
 use log::{debug, trace};
 use moka::sync::Cache;
+use once_cell::sync::Lazy;
 use reqwest::blocking::{Client, Response};
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
@@ -43,10 +44,8 @@ const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
 
 type HttpCircuitBreaker = StateMachine<ConsecutiveFailures<Exponential>, ()>;
 
-lazy_static! {
-    static ref CIRCUIT_BREAKER_REGISTRY: Arc<Mutex<HashMap<String, HttpCircuitBreaker>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-}
+static CIRCUIT_BREAKER_REGISTRY: Lazy<Arc<Mutex<HashMap<String, HttpCircuitBreaker>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 impl CachedHttpRequest<'_> {
     pub fn new<'a, T: Debug>(
