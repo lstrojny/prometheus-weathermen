@@ -12,7 +12,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 
 pub type HttpRequestBody = Cache<(Method, Url), String>;
@@ -44,8 +44,8 @@ const EXPONENTIAL_BACKOFF_MAX_SECS: u64 = 300;
 
 type HttpCircuitBreaker = StateMachine<ConsecutiveFailures<Exponential>, ()>;
 
-static CIRCUIT_BREAKER_REGISTRY: Lazy<Arc<Mutex<HashMap<String, HttpCircuitBreaker>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+static CIRCUIT_BREAKER_REGISTRY: Lazy<Mutex<HashMap<String, HttpCircuitBreaker>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 impl CachedHttpRequest<'_> {
     pub fn new<'a, T: Debug>(
@@ -128,7 +128,6 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         request.method, request.url
     );
 
-    let circuit_breaker_registry_ref = Arc::clone(&CIRCUIT_BREAKER_REGISTRY);
     let cicruit_breaker_scope = request
         .url
         .host_str()
@@ -136,8 +135,7 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
 
     // Separate scope so read lock is dropped at the end if circuit breaker does not yet exist
     {
-        let circuit_breaker_registry_ro =
-            circuit_breaker_registry_ref.lock().expect("Poisoned lock");
+        let circuit_breaker_registry_ro = CIRCUIT_BREAKER_REGISTRY.lock().expect("Poisoned lock");
 
         trace!("Read lock acquired for {:?}", cicruit_breaker_scope);
 
@@ -154,7 +152,7 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         );
 
         let mut circuit_breaker_registry_rw =
-            circuit_breaker_registry_ref.lock().expect("Poisoned lock");
+            CIRCUIT_BREAKER_REGISTRY.lock().expect("Poisoned lock");
         trace!(
             "Write lock acquired to instantiate circuit breaker {:?}",
             cicruit_breaker_scope
@@ -191,7 +189,7 @@ pub fn reqwest_cached<R: Debug>(request: &CachedHttpRequest<R>) -> anyhow::Resul
         "Trying to acquire read lock after circuit breaker {:?} was instantiated",
         cicruit_breaker_scope
     );
-    let circuit_breaker_registry_ro = circuit_breaker_registry_ref
+    let circuit_breaker_registry_ro = CIRCUIT_BREAKER_REGISTRY
         .lock()
         .expect("Lock should not be poisoned");
     trace!(
