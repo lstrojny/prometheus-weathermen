@@ -1,4 +1,14 @@
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "develop"
+      - "dev/*"
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches:
+      - "main"
+
 name: Build Pipeline
 jobs:
   check:
@@ -144,6 +154,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       CONTAINER_BINARY_DIR: target/container-binaries
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
@@ -178,7 +189,6 @@ jobs:
             org.opencontainers.image.licenses=MIT OR Apache2
 
       - name: Set up QEMU
-        if: github.event_name != 'pull_request'
         uses: docker/setup-qemu-action@v2.1.0
         with:
           platforms: ${{ steps.docker_binaries.outputs.platforms }}
@@ -193,7 +203,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v2.1.0
         with:
           registry: ghcr.io
@@ -204,14 +213,13 @@ jobs:
         uses: docker/build-push-action@v3.3.0
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.docker_metadata.outputs.tags }}
           labels: ${{ steps.docker_metadata.outputs.labels }}
           platforms: ${{ steps.docker_binaries.outputs.platforms }}
           build-args: CONTAINER_BINARY_DIR=${{ env.CONTAINER_BINARY_DIR }}
 
       - name: Docker Hub Description
-        if: github.event_name != 'pull_request'
         uses: peter-evans/dockerhub-description@v3.1.2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
