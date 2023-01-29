@@ -60,8 +60,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-  build:
-    name: ${{ matrix.profile == 'debug' && 'Debug build' || 'Build' }} ${{ matrix.desc }} (${{ matrix.target }})
+  build-binary:
+    name: ${{ matrix.profile == 'debug' && 'Debug build' || 'Build' }} ${{ matrix.desc }} binary (${{ matrix.target }})
     strategy:
       fail-fast: false
       matrix:
@@ -116,7 +116,7 @@ jobs:
         uses: actions-rs/cargo@v1.0.3
         with:
           use-cross: true
-          command: help
+          command: help # We just need to make sure that cross is available
 
       - name: Build ${{ matrix.profile }} archive
         run: make dist
@@ -138,8 +138,89 @@ jobs:
           path: ${{ steps.list-archive.outputs.archive }}
           if-no-files-found: error
 
+  build-docker:
+    needs: [build-binary]
+    name: Build Docker images
+    runs-on: ubuntu-22.04
+    env:
+      CONTAINER_BINARY_DIR: target/container-binaries
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3.3.0
+
+      - name: Download binaries
+        uses: actions/download-artifact@v3.0.2
+        id: docker_download
+
+      - name: Prepare binaries
+        id: docker_binaries
+        shell: bash
+        run: make container-binaries PLATFORM_FILE=$GITHUB_OUTPUT
+        env:
+          BINARY_ARCHIVE_DIR: ${{ steps.docker_download.outputs.download-path }}
+
+      - name: Generate metadata
+        id: docker_metadata
+        uses: docker/metadata-action@v4.3.0
+        with:
+          images: |
+            lstrojny/prometheus-weathermen
+            ghcr.io/lstrojny/prometheus-weathermen
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+          labels: |
+            org.opencontainers.image.licenses=MIT OR Apache2
+
+      - name: Set up QEMU
+        if: github.event_name != 'pull_request'
+        uses: docker/setup-qemu-action@v2.1.0
+        with:
+          platforms: ${{ steps.docker_binaries.outputs.platforms }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2.3.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v3.3.0
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.docker_metadata.outputs.tags }}
+          labels: ${{ steps.docker_metadata.outputs.labels }}
+          platforms: ${{ steps.docker_binaries.outputs.platforms }}
+          build-args: CONTAINER_BINARY_DIR=${{ env.CONTAINER_BINARY_DIR }}
+
+      - name: Docker Hub Description
+        if: github.event_name != 'pull_request'
+        uses: peter-evans/dockerhub-description@v3.1.2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: lstrojny/prometheus-weathermen
+          short-description: A prometheus exporter endpoint for weather data
+
   release:
-    needs: [check, build]
+    needs: [check, build-binary, build-docker]
     name: Release
     runs-on: ubuntu-22.04
     if: startsWith(github.ref, 'refs/tags/')

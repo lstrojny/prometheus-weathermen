@@ -1,6 +1,8 @@
 DEBUG ?= 1
 TARGET ?=
 
+SHELL := /usr/bin/env bash
+
 ifneq ($(DEBUG), 0)
 	BUILD_ARGS :=
 	TARGET_DIR = target/$(TARGET)/debug/
@@ -32,7 +34,7 @@ ARCHIVE_DIR = $(DIST_DIR)/$(PACKAGE_NAME_AND_VERSION)
 ARCHIVE_NAME = $(PACKAGE_NAME_AND_VERSION).tar.zz
 
 .DEFAULT_GOAL = help
-.PHONY: dist build check-dist help
+.PHONY: dist build check-dist help container-binaries
 
 dist: check-dist build
 	rm -rf $(ARCHIVE_DIR)
@@ -60,7 +62,22 @@ ifndef SUFFIX
 	_ := $(error SUFFIX must be defined)
 endif
 
+container-binaries: $(wildcard $(BINARY_ARCHIVE_DIR)/*/*.tar.zz)
+	mkdir -p $(CONTAINER_BINARY_DIR)
+	for archive in $^; do tar -C $(CONTAINER_BINARY_DIR) -Jxf $$archive ; done
+	platforms=(linux/amd64 linux/arm64 linux/arm/v7); \
+	targets=(x86_64-linux-static arm64-linux-static arm-linux-static); \
+	let "len = $${#platforms[@]} - 1"; \
+	for n in $$(seq 0 $$len); do \
+	  platform=$${platforms[$$n]}; \
+	  target=$${targets[$$n]}; \
+	  mkdir -p $(CONTAINER_BINARY_DIR)/$${platform}; \
+	  cp $(CONTAINER_BINARY_DIR)/prometheus-weathermen-*-$${target}/usr/local/bin/prometheus-weathermen $(CONTAINER_BINARY_DIR)/$${platform}; \
+	done; \
+	echo platforms=$${platforms[@]} | tr " " "," >> $(PLATFORM_FILE)
+
 help:
 	@echo "Targets:"
 	@echo "Build dev target on the current machine: make build"
 	@echo "Build distribution package:              make dist [DEBUG=1] [RELEASE=0] [TARGET=] [SUFFIX=]"
+	@echo "Prepare container binaries:              make container-binaries [BINARY_ARCHIVE_DIR=] [CONTAINER_BINARY_DIR=] [PLATFORM_FILE=]"

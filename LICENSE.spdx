@@ -1,0 +1,6 @@
+SPDXVersion: SPDX-2.0
+Creator: Lars Strojny
+PackageName: prometheus-weathermen
+PackageOriginator: Lars Strojny
+PackageHomePage: https://github.com/lstrojny/prometheus-weathermen
+PackageLicenseDeclared: MIT OR Apache-2.0
