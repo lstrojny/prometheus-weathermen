@@ -3,4 +3,4 @@ Creator: Lars Strojny
 PackageName: prometheus-weathermen
 PackageOriginator: Lars Strojny
 PackageHomePage: https://github.com/lstrojny/prometheus-weathermen
-PackageLicenseDeclared: MIT
+PackageLicenseDeclared: MIT OR Apache-2.0
