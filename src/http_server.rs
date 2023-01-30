@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn false_if_no_authentication_required() {
-        assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None))
+        assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None));
     }
 
     #[test]

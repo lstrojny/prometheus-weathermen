@@ -83,8 +83,8 @@ mod tests {
         let mut lines: Vec<&str> = output.lines().collect();
 
         lines.sort_by(|left, right| {
-            let left_is_comment = left.starts_with("#");
-            let right_is_comment = right.starts_with("#");
+            let left_is_comment = left.starts_with('#');
+            let right_is_comment = right.starts_with('#');
             let left_metric_id = get_metric_identifier(left, left_is_comment);
             let right_metric_id = get_metric_identifier(right, right_is_comment);
 
@@ -93,7 +93,7 @@ mod tests {
                 return Ordering::Equal;
             }
 
-            return left.partial_cmp(right).unwrap_or(Ordering::Equal);
+            left.partial_cmp(right).unwrap_or(Ordering::Equal)
         });
 
         lines.join("\n")
@@ -101,10 +101,10 @@ mod tests {
 
     fn get_metric_identifier(line: &str, is_comment: bool) -> String {
         if is_comment {
-            line.split(" ").nth(2).unwrap_or(&"".to_string()).into()
+            line.split(' ').nth(2).unwrap_or("").into()
         } else {
-            line.split("{")
-                .nth(0)
+            line.split('{')
+                .next()
                 .expect("Could not extract identifier from metric line")
                 .into()
         }
@@ -136,7 +136,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
                 }])
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 
     #[test]
@@ -169,7 +169,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                 }])
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 
     #[test]
@@ -217,6 +217,6 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                 ])
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 }

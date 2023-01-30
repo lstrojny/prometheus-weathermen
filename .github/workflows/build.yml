@@ -57,7 +57,7 @@ jobs:
       - name: Static analysis with clippy
         uses: actions-rs/cargo@v1.0.3
         with:
-          command: clippy
+          command: clippy --all-targets
 
       - name: Run tests
         uses: actions-rs/cargo@v1.0.3
@@ -106,7 +106,6 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/${{ matrix.target }}
           key: cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
           restore-keys: |
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
@@ -137,6 +136,7 @@ jobs:
           RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
+          CARGO_INCREMENTAL: 0
 
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT

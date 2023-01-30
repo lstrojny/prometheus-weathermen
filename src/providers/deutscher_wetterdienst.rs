@@ -279,10 +279,10 @@ mod tests {
                 name: "Großenkneten".into(),
                 latitude: 52.9336.into(),
                 longitude: 8.2370.into(),
-            }], parse_weather_station_list_csv(&"Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+            }], parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
 00044 20070209 20230111             44     52.9336    8.2370 Großenkneten                             Niedersachsen                                                                                     \n\
-".to_string()));
+"));
         }
     }
 
@@ -304,9 +304,9 @@ mod tests {
                 find_closest_weather_station(
                     &Coordinates {
                         latitude: 48.11591.into(),
-                        longitude: 11.570906.into(),
+                        longitude: 11.570_906.into(),
                     },
-                    &vec![
+                    &[
                         WeatherStation {
                             station_id: "03379".into(),
                             name: "München-Stadt".into(),
@@ -363,7 +363,7 @@ mod tests {
                     _atmospheric_pressure: "-999".into(),
                     _dew_point_temperature_200_centimeters: 2.4.into(),
                     _temperature_5_centimeters: 2.5.into(),
-                    time: DateTime::parse_from_rfc3339(&"2023-01-12T00:00:00Z")
+                    time: DateTime::parse_from_rfc3339("2023-01-12T00:00:00Z")
                         .expect("Static value")
                         .with_timezone(&Utc {}),
                     temperature_200_centimers: 5.1.into(),
