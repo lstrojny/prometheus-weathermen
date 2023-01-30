@@ -131,6 +131,7 @@ jobs:
           command: help # We just need to make sure that cross is available
 
       - run: rustup toolchain list
+      - run: env
 
       - name: Build ${{ matrix.profile }} archive
         run: make dist
