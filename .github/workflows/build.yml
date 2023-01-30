@@ -111,6 +111,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/${{ matrix.target }}
+            target/${{ matrix.profile }}
           key: rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
           restore-keys: |
             rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
