@@ -149,7 +149,6 @@ jobs:
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
           CARGO_INCREMENTAL: 1
-          CARGO_LOG: trace
 
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
