@@ -48,6 +48,9 @@ jobs:
             rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
+      - name: Select toolchain
+        run: rustup default ${{ matrix.toolchain }}
+
       - name: Check formatting
         uses: actions-rs/cargo@v1.0.3
         with:
@@ -130,10 +133,10 @@ jobs:
           use-cross: true
           command: help # We just need to make sure that cross is available
 
-      - run: rustup default nightly
+      - name: Select toolchain
+        run: rustup default ${{ matrix.toolchain }}
+
       - run: rustup toolchain list
-      - run: env
-      - run: rustc --version
       - run: cargo --version
 
       - name: Build ${{ matrix.profile }} archive
