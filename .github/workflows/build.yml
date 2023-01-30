@@ -162,7 +162,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       CONTAINER_BINARY_DIR: target/container-binaries
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && 'x' == 'y'
     steps:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
