@@ -138,7 +138,8 @@ jobs:
           RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
-          CARGO_INCREMENTAL: 0
+          CARGO_INCREMENTAL: 1
+          CARGO_LOG: trace
 
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
