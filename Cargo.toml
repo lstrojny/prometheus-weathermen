@@ -12,6 +12,7 @@ repository = "https://github.com/lstrojny/prometheus-weathermen"
 lto = true
 codegen-units = 1
 strip = "symbols"
+incremental = true
 
 [dependencies]
 rocket = { version = "0.5.0-rc.2", features = ["tls"] }
