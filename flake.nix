@@ -18,7 +18,7 @@
       in {
         devShell = pkgs.mkShell {
           packages = [
-            pkgs.rust-bin.stable.latest.complete
+            pkgs.rust-bin.nightly.latest.complete
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.openssl
             pkgs.pkgconfig
