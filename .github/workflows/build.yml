@@ -122,6 +122,8 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
+      - run: ls -l target/${{ matrix.target }}
+
       - name: Install cross
         if: ${{ matrix.cross }}
         uses: actions-rs/cargo@v1.0.3
