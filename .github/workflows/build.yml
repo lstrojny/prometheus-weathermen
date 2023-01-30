@@ -140,6 +140,8 @@ jobs:
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
 
+      - run: ls -l target/${{ matrix.target }}
+
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
         id: list-archive
