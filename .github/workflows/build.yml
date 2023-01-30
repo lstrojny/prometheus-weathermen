@@ -132,6 +132,8 @@ jobs:
 
       - run: rustup toolchain list
       - run: env
+      - run: rustc --version
+      - run: cargo --version
 
       - name: Build ${{ matrix.profile }} archive
         run: make dist
