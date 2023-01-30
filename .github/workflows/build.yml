@@ -97,14 +97,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
 
-      - name: Install ${{ matrix.toolchain }} toolchain
-        uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: stable
-          profile: minimal
-          target: ${{ matrix.target }}
-          components: rustfmt, clippy
-
       - name: Set up cargo cache
         uses: actions/cache@v3.2.3
         continue-on-error: false
@@ -121,6 +113,14 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
+
+      - name: Install ${{ matrix.toolchain }} toolchain
+        uses: actions-rs/toolchain@v1.0.7
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          profile: minimal
+          target: ${{ matrix.target }}
+          components: rustfmt, clippy
 
       - name: Install cross
         if: ${{ matrix.cross }}
