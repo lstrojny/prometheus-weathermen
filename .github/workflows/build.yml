@@ -122,8 +122,6 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
-      - run: ls -l target/${{ matrix.target }}/*
-
       - name: Install cross
         if: ${{ matrix.cross }}
         uses: actions-rs/cargo@v1.0.3
@@ -139,8 +137,6 @@ jobs:
           RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
-
-      - run: ls -l target/${{ matrix.target }}/*
 
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
