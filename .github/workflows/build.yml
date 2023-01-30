@@ -88,10 +88,10 @@ jobs:
           - { desc: arm64-linux-dbg,            target: aarch64-unknown-linux-gnu,          host: ubuntu-22.04,     profile: debug,       cross: true,      toolchain: stable }
           - { desc: arm64-linux-static,         target: aarch64-unknown-linux-musl,         host: ubuntu-22.04,     profile: release,     cross: true,      toolchain: stable }
           - { desc: arm64-linux-static-dbg,     target: aarch64-unknown-linux-musl,         host: ubuntu-22.04,     profile: debug,       cross: true,      toolchain: stable }
-          - { desc: x86_64-linux,               target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04,     profile: release,     cross: false,      toolchain: stable }
-          - { desc: x86_64-linux-dbg,           target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04,     profile: debug,       cross: false,      toolchain: stable }
-          - { desc: x86_64-linux-static,        target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: release,     cross: false,      toolchain: stable }
-          - { desc: x86_64-linux-static-dbg,    target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: debug,       cross: false,      toolchain: stable }
+          - { desc: x86_64-linux,               target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04,     profile: release,     cross: false,     toolchain: stable }
+          - { desc: x86_64-linux-dbg,           target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04,     profile: debug,       cross: false,     toolchain: stable }
+          - { desc: x86_64-linux-static,        target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: release,     cross: true,      toolchain: stable }
+          - { desc: x86_64-linux-static-dbg,    target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: debug,       cross: true,      toolchain: stable }
     runs-on: ${{ matrix.host }}
     steps:
       - name: Checkout source
