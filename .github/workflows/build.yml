@@ -7,7 +7,7 @@ on:
       - "v*.*.*"
   pull_request:
     branches:
-      - "main"
+      - "develop"
 
 name: Build Pipeline
 jobs:
