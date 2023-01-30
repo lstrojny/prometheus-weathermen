@@ -130,6 +130,7 @@ jobs:
           use-cross: true
           command: help # We just need to make sure that cross is available
 
+      - run: rustup default nightly
       - run: rustup toolchain list
       - run: env
       - run: rustc --version
