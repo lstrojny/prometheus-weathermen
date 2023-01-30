@@ -122,7 +122,7 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
-      - run: ls -l target/${{ matrix.target }}
+      - run: ls -l target/${{ matrix.target }}/*
 
       - name: Install cross
         if: ${{ matrix.cross }}
@@ -140,7 +140,7 @@ jobs:
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
 
-      - run: ls -l target/${{ matrix.target }}
+      - run: ls -l target/${{ matrix.target }}/*
 
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
