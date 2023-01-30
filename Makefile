@@ -5,10 +5,10 @@ SHELL := /usr/bin/env bash
 
 ifneq ($(DEBUG), 0)
 	BUILD_ARGS :=
-	TARGET_DIR = target/$(TARGET)/debug/
+	TARGET_DIR = target/$(TARGET)/debug
 else
 	BUILD_ARGS := $(BUILD_ARGS) --release
-	TARGET_DIR = target/$(TARGET)/release/
+	TARGET_DIR = target/$(TARGET)/release
 endif
 
 ifdef TARGET
