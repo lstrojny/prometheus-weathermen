@@ -162,13 +162,6 @@ jobs:
           path: ${{ steps.list-archive.outputs.archive }}
           if-no-files-found: error
 
-      - name: Upload timings
-        uses: actions/upload-artifact@v3.1.2
-        with:
-          name: timings-${{ matrix.desc }}
-          path: "target/cargo-timings/*"
-          if-no-files-found: error
-
   build-docker:
     needs: [build-binary]
     name: Build Docker images
