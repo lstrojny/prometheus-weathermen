@@ -55,7 +55,8 @@ endif
 	tar -C $(DIST_DIR) -Jcvf $(ARCHIVE_NAME) $(PACKAGE_NAME_AND_VERSION)
 
 build:
-	PROMW_VERSION=$(VERSION) $(CARGO) build $(BUILD_ARGS) --timings -vvv
+	touch -d 1970-01-01T00:00:00.00 build.rs
+	PROMW_VERSION=$(VERSION) $(CARGO) build $(BUILD_ARGS)
 
 check-dist:
 ifndef SUFFIX
