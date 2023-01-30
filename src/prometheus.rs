@@ -79,7 +79,7 @@ mod tests {
     use assert_str::assert_str_eq;
     use std::cmp::Ordering;
 
-    fn sort_output_deterministically(output: String) -> String {
+    fn sort_output_deterministically(output: &str) -> String {
         let mut lines: Vec<&str> = output.lines().collect();
 
         lines.sort_by(|left, right| {
@@ -123,7 +123,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                format(vec![Weather {
+                &format(vec![Weather {
                     source: "org.example".into(),
                     coordinates: Coordinates {
                         latitude: Coordinate::from(20.1),
@@ -156,7 +156,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                format(vec![Weather {
+                &format(vec![Weather {
                     source: "org.example".into(),
                     coordinates: Coordinates {
                         latitude: Coordinate::from(20.1),
@@ -191,7 +191,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                format(vec![
+                &format(vec![
                     Weather {
                         source: "org.example".into(),
                         coordinates: Coordinates {
