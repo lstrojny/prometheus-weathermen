@@ -35,7 +35,7 @@ Readymade containers are available for `linux/amd64`, `linux/arm64` and `linux/a
 This is how to run the container using Docker:
 
 ```
-docker run -p 36333 \
+docker run -p 36333:36333 \
     -v $(pwd)/weathermen.toml:/etc/prometheus-weathermen/weathermen.toml \
     lstrojny/prometheus-weathermen:latest
 ```
