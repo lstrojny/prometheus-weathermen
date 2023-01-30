@@ -94,7 +94,7 @@ jobs:
           #- { desc: arm64-linux-static-dbg,     target: aarch64-unknown-linux-musl,         host: ubuntu-22.04,     profile: debug,       cross: true,      toolchain: nightly }
           - { desc: x86_64-linux,               target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04,     profile: release,     cross: false,     toolchain: nightly }
           #- { desc: x86_64-linux-dbg,           target: x86_64-unknown-linux-gnu,           host: ubuntu-22.04,     profile: debug,       cross: false,     toolchain: nightly }
-          #- { desc: x86_64-linux-static,        target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: release,     cross: true,      toolchain: nightly }
+          - { desc: x86_64-linux-static,        target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: release,     cross: true,      toolchain: nightly }
           #- { desc: x86_64-linux-static-dbg,    target: x86_64-unknown-linux-musl,          host: ubuntu-22.04,     profile: debug,       cross: true,      toolchain: nightly }
     runs-on: ${{ matrix.host }}
     steps:
