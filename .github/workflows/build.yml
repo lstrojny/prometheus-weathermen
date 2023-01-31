@@ -27,7 +27,7 @@ jobs:
       - name: Install ${{ matrix.toolchain }} toolchain
         run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
 
-      - name: Restore cache
+      - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
       - name: Install clippy
@@ -76,7 +76,7 @@ jobs:
       - name: Install ${{ matrix.toolchain }} toolchain
         run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
 
-      - name: Restore cache
+      - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
       - name: Install cross
