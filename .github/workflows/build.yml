@@ -76,11 +76,15 @@ jobs:
       - name: Install ${{ matrix.toolchain }} toolchain
         run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
 
+      - name: Cache Rust compilation
+        uses: metalbear-co/sccache-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache-from: sccache-${{ matrix.host }}-
+          cache-to: sccache-${{ matrix.host }}-${{ github.sha }}
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-
-      - name: Enable incremental builds
-        run: echo CARGO_INCREMENTAL=1 >> $GITHUB_ENV
 
       - name: Install cross
         if: ${{ matrix.cross }}
