@@ -76,8 +76,14 @@ jobs:
       - name: Install ${{ matrix.toolchain }} toolchain
         run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
 
+      - name: Set incremental
+        run: echo CARGO_INCREMENTAL=1 >> $GITHUB_ENV
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
+
+      - name: Set incremental goddamnit
+        run: echo CARGO_INCREMENTAL=1 >> $GITHUB_ENV
 
       - name: Install cross
         if: ${{ matrix.cross }}
