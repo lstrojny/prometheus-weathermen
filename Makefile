@@ -55,10 +55,21 @@ endif
 	tar -C $(DIST_DIR) -Jcvf $(ARCHIVE_NAME) $(PACKAGE_NAME_AND_VERSION)
 
 build:
-	@echo "CARGO_INCREMENTAL: $$CARGO_INCREMENTAL"
-	@echo "PROMW_VERSION: $(VERSION)"
-	@echo "Build args: $(BUILD_ARGS)"
+	@echo "Build info"
+	@echo "----------"
+	@echo "CARGO_INCREMENTAL: \"$$CARGO_INCREMENTAL\""
+	@echo "PROMW_VERSION: \"$(VERSION)\""
+	@echo "Build args: \"$(BUILD_ARGS)\""
+	@echo ""
 	PROMW_VERSION=$(VERSION) $(CARGO) build $(BUILD_ARGS)
+	@echo ""
+	@echo "Linkage info"
+	@echo "------------"
+ifneq (, $(findstring linux, $(TARGET)))
+	ldd $(TARGET_DIR)/$(PACKAGE_NAME)
+else
+	otool -L $(TARGET_DIR)/$(PACKAGE_NAME)
+endif
 
 check-dist:
 ifndef SUFFIX
