@@ -77,7 +77,7 @@ jobs:
         run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
 
       - name: Cache Rust compilation
-        uses: metalbear-co/sccache-action@17192d8
+        uses: metalbear-co/sccache-action@17192d82c6c41cc16d4e06b7681ab1b452690206
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache-from: sccache-${{ matrix.host }}-
