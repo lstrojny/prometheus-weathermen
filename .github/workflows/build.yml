@@ -83,7 +83,6 @@ jobs:
         if: ${{ matrix.cross }}
         run: cargo install cross
 
-
       - name: Build ${{ matrix.profile }} archive
         run: make dist
         env:
