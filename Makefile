@@ -55,7 +55,9 @@ endif
 	tar -C $(DIST_DIR) -Jcvf $(ARCHIVE_NAME) $(PACKAGE_NAME_AND_VERSION)
 
 build:
-	@echo "Increment builds: $$CARGO_INCREMENTAL"
+	@echo "CARGO_INCREMENTAL: $$CARGO_INCREMENTAL"
+	@echo "PROMW_VERSION: $(VERSION)"
+	@echo "Build args: $(BUILD_ARGS)"
 	PROMW_VERSION=$(VERSION) $(CARGO) build $(BUILD_ARGS)
 
 check-dist:
