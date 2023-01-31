@@ -33,9 +33,6 @@ jobs:
       - name: Install clippy
         run: rustup component add clippy-preview
 
-      - name: Install rustfmt
-        run: cargo install rustfmt
-
       - name: Check formatting
         run: cargo fmt --all --check
 
