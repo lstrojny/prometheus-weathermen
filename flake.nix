@@ -14,15 +14,10 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        rust-env = pkgs.rust-bin.stable.latest.complete;
+        rust-env = pkgs.rust-bin.nightly.latest.complete;
       in {
         devShell = pkgs.mkShell {
-          packages = [
-            pkgs.rust-bin.nightly.latest.complete
-            pkgs.darwin.apple_sdk.frameworks.Security
-            pkgs.openssl
-            pkgs.pkgconfig
-          ];
+          packages = [ rust-env pkgs.darwin.apple_sdk.frameworks.Security pkgs.openssl pkgs.pkgconfig ];
           shellHook = ''
             echo "Toolchain: ${pkgs.lib.getBin rust-env}/bin"
             echo " rust-std: ${pkgs.lib.getLib rust-env}/lib/rustlib/src/rust/library"
