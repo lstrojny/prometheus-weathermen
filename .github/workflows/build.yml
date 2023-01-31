@@ -138,9 +138,6 @@ jobs:
       - name: Select toolchain
         run: rustup default ${{ matrix.toolchain }}
 
-      - run: rustup toolchain list
-      - run: cargo --version
-
       - name: Build ${{ matrix.profile }} archive
         run: make dist
         env:
