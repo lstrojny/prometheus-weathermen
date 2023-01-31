@@ -41,11 +41,10 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}-check
+          key: rust-check-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}-check
           restore-keys: |
-            rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}-check
-            rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
-            rust-${{ runner.os }}-${{ matrix.toolchain }}
+            rust-check-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+            rust-check-${{ runner.os }}-${{ matrix.toolchain }}
 
       - name: Select toolchain
         run: rustup default ${{ matrix.toolchain }}
@@ -113,12 +112,11 @@ jobs:
             ~/.cargo/git/db/
             target/${{ matrix.target }}
             target/${{ matrix.profile }}
-          key: rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
+          key: rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
           restore-keys: |
-            rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
-            rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}
-            rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
-            rust-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
+            rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}
+            rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
+            rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
       - name: Install ${{ matrix.toolchain }} toolchain
         uses: actions-rs/toolchain@v1.0.7
