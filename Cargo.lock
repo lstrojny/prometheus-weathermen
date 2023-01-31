@@ -2546,9 +2546,9 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "886f31a9b85b6182cabd4d8b07df3b451afcc216563748201490940d2a28ed36"
+checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
 dependencies = [
  "serde",
 ]
