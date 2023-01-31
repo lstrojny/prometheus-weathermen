@@ -9,9 +9,6 @@ on:
     branches:
       - "develop"
 
-env:
-  CARGO_INCREMENTAL: 1
-
 name: Build Pipeline
 jobs:
   check:
@@ -81,6 +78,9 @@ jobs:
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
+
+      - name: Enable incremental builds
+        run: echo CARGO_INCREMENTAL=1 >> $GITHUB_ENV
 
       - name: Install cross
         if: ${{ matrix.cross }}
