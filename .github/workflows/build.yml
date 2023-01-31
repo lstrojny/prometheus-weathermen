@@ -76,13 +76,6 @@ jobs:
       - name: Install ${{ matrix.toolchain }} toolchain
         run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
 
-      - name: Cache Rust compilation
-        uses: metalbear-co/sccache-action@17192d82c6c41cc16d4e06b7681ab1b452690206
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-from: sccache-${{ matrix.host }}-
-          cache-to: sccache-${{ matrix.host }}-${{ github.sha }}
-
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
