@@ -24,30 +24,10 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
 
-      - name: Install ${{ matrix.toolchain }} toolchain
-        uses: actions-rs/toolchain@v1.0.7
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
+      - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
+      - run: cargo install rustfmt clippy
 
-      - name: Set up cargo cache
-        uses: actions/cache@v3.2.3
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: rust-check-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}-check
-          restore-keys: |
-            rust-check-${{ runner.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
-            rust-check-${{ runner.os }}-${{ matrix.toolchain }}
-
-      - name: Select toolchain
-        run: rustup default ${{ matrix.toolchain }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
         uses: actions-rs/cargo@v1.0.3
@@ -56,22 +36,13 @@ jobs:
           args: --all -- --check
 
       - name: Static analysis with clippy
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: clippy
-          args: --all-targets --no-deps
-        env:
-          CARGO_INCREMENTAL: 0
+        run: cargo clippy --all-targets --no-deps
 
       - name: Run tests
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: test
+        run: cargo test
 
       - name: Check for security issues
-        uses: actions-rs/audit-check@v1.2.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo audit
         continue-on-error: true
 
   build-binary:
@@ -101,40 +72,10 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3.3.0
 
-      - name: Set up cargo cache
-        uses: actions/cache@v3.2.3
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/${{ matrix.target }}
-            target/${{ matrix.profile }}
-          key: rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}-build
-          restore-keys: |
-            rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}-${{ hashFiles('**/Cargo.lock') }}
-            rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-${{ matrix.profile }}
-            rust-build-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
+      - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal
+      - run: cargo install cross
 
-      - name: Install ${{ matrix.toolchain }} toolchain
-        uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          profile: minimal
-          target: ${{ matrix.target }}
-          components: rustfmt, clippy
-
-      - name: Install cross
-        if: ${{ matrix.cross }}
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          use-cross: true
-          command: help # We just need to make sure that cross is available
-
-      - name: Select toolchain
-        run: rustup default ${{ matrix.toolchain }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build ${{ matrix.profile }} archive
         run: make dist
@@ -144,7 +85,6 @@ jobs:
           RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
           SUFFIX: ${{ matrix.desc }}
           TARGET: ${{ matrix.target }}
-          CARGO_INCREMENTAL: 1
 
       - name: Find archive
         run: echo archive=`ls prometheus-weathermen-*.tar.zz` >> $GITHUB_OUTPUT
