@@ -62,6 +62,8 @@ jobs:
         with:
           command: clippy
           args: --all-targets
+        env:
+          CARGO_INCREMENTAL: 0
 
       - name: Run tests
         uses: actions-rs/cargo@v1.0.3
