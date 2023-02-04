@@ -1,0 +1,23 @@
+name: Dependabot Automerge
+on:
+  workflow_run:
+    workflows: ["Build Pipeline"]
+    types:
+      - completed
+
+jobs:
+  automerge:
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3.3.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Auto merge dependabot PRs
+        uses: ahmadnassri/action-dependabot-auto-merge@v2.6.6
+        with:
+          target: minor
+          github-token: ${{ secrets.PR_GITHUB_TOKEN }}
+          command: squash and merge

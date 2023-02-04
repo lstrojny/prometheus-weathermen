@@ -155,22 +155,6 @@ jobs:
           path: ${{ steps.list-archive.outputs.archive }}
           if-no-files-found: error
 
-  dependabot:
-    name: Dependabot merge
-    needs: [build-binary]
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v3.3.0
-
-      - name: Auto merge dependabot PRs
-        uses: ahmadnassri/action-dependabot-auto-merge@v2.6.6
-        with:
-          target: minor
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          command: squash and merge
-
   build-docker:
     needs: [build-binary]
     name: Build Docker images
