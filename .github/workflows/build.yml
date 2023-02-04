@@ -161,7 +161,8 @@ jobs:
         uses: ahmadnassri/action-dependabot-auto-merge@v2.6.6
         with:
           target: minor
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PR_GITHUB_TOKEN }}
+          command: squash and merge
 
   build-docker:
     needs: [build-binary]
