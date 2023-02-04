@@ -10,6 +10,12 @@ on:
       - "develop"
 
 name: Build Pipeline
+permissions:
+  checks: write
+  packages: write
+  pull-requests: write
+  security-events: read
+  statuses: write
 jobs:
   check:
     name: Check on ${{ matrix.host }} against ${{ matrix.toolchain }} Rust
@@ -161,7 +167,7 @@ jobs:
         uses: ahmadnassri/action-dependabot-auto-merge@v2.6.6
         with:
           target: minor
-          github-token: ${{ secrets.PR_GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           command: squash and merge
 
   build-docker:
