@@ -1692,7 +1692,7 @@ dependencies = [
  "simple_logger",
  "systemd-journal-logger",
  "tokio",
- "toml 0.7.1",
+ "toml 0.7.2",
  "zip",
 ]
 
@@ -2536,9 +2536,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "772c1426ab886e7362aedf4abc9c0d1348a979517efedfc25862944d10137af0"
+checksum = "f7afcae9e3f0fe2c370fd4657108972cbb2fa9db1b9f84849cefd80741b01cb6"
 dependencies = [
  "serde",
  "serde_spanned",
