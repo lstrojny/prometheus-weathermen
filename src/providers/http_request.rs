@@ -131,36 +131,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
             drop(circuit_breaker_registry_ro);
         }
 
-        // Separate scope so write lock is dropped at the end
-        {
-            trace!(
-                "Trying to acquire write lock to instantiate circuit breaker {:?}",
-                cicruit_breaker_scope
-            );
-
-            let mut circuit_breaker_registry_rw =
-                CIRCUIT_BREAKER_REGISTRY.write().expect("Poisoned lock");
-            trace!(
-                "Write lock acquired to instantiate circuit breaker {:?}",
-                cicruit_breaker_scope
-            );
-
-            if !circuit_breaker_registry_rw.contains_key(cicruit_breaker_scope) {
-                trace!(
-                    "Circuit breaker {:?} not yet instantiated, instantiating",
-                    cicruit_breaker_scope
-                );
-
-                let circuit_breaker = create_circuit_breaker();
-
-                circuit_breaker_registry_rw
-                    .insert(cicruit_breaker_scope.to_string(), circuit_breaker);
-
-                trace!("Circuit breaker {:?} instantiated", cicruit_breaker_scope);
-            }
-
-            drop(circuit_breaker_registry_rw);
-        }
+        ensure_circuit_breaker(cicruit_breaker_scope);
 
         trace!(
             "Trying to acquire read lock after circuit breaker {:?} was instantiated",
@@ -183,6 +154,32 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
     match value {
         Ok(v) => Ok((request.deserialize)(&v)?),
         Err(e) => Err(anyhow!(e)),
+    }
+}
+
+fn ensure_circuit_breaker(cicruit_breaker_scope: &str) {
+    trace!(
+        "Trying to acquire write lock to instantiate circuit breaker {:?}",
+        cicruit_breaker_scope
+    );
+
+    let mut circuit_breaker_registry_rw = CIRCUIT_BREAKER_REGISTRY.write().expect("Poisoned lock");
+    trace!(
+        "Write lock acquired to instantiate circuit breaker {:?}",
+        cicruit_breaker_scope
+    );
+
+    if !circuit_breaker_registry_rw.contains_key(cicruit_breaker_scope) {
+        trace!(
+            "Circuit breaker {:?} not yet instantiated, instantiating",
+            cicruit_breaker_scope
+        );
+
+        let circuit_breaker = create_circuit_breaker();
+
+        circuit_breaker_registry_rw.insert(cicruit_breaker_scope.to_string(), circuit_breaker);
+
+        trace!("Circuit breaker {:?} instantiated", cicruit_breaker_scope);
     }
 }
 
