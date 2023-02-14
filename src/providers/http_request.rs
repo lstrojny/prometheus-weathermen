@@ -145,26 +145,13 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
                 cicruit_breaker_scope
             );
 
-            if circuit_breaker_registry_rw.contains_key(cicruit_breaker_scope) {
-                trace!(
-                    "Circuit breaker {:?} already instantiated, skipping",
-                    cicruit_breaker_scope
-                );
-            } else {
+            if !circuit_breaker_registry_rw.contains_key(cicruit_breaker_scope) {
                 trace!(
                     "Circuit breaker {:?} not yet instantiated, instantiating",
                     cicruit_breaker_scope
                 );
 
-                let circuit_breaker = Config::new()
-                    .failure_policy(consecutive_failures(
-                        CONSECUTIVE_FAILURE_COUNT,
-                        exponential(
-                            Duration::from_secs(EXPONENTIAL_BACKOFF_START_SECS),
-                            Duration::from_secs(EXPONENTIAL_BACKOFF_MAX_SECS),
-                        ),
-                    ))
-                    .build();
+                let circuit_breaker = create_circuit_breaker();
 
                 circuit_breaker_registry_rw
                     .insert(cicruit_breaker_scope.to_string(), circuit_breaker);
@@ -197,6 +184,18 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
         Ok(v) => Ok((request.deserialize)(&v)?),
         Err(e) => Err(anyhow!(e)),
     }
+}
+
+fn create_circuit_breaker() -> StateMachine<ConsecutiveFailures<Exponential>, ()> {
+    Config::new()
+        .failure_policy(consecutive_failures(
+            CONSECUTIVE_FAILURE_COUNT,
+            exponential(
+                Duration::from_secs(EXPONENTIAL_BACKOFF_START_SECS),
+                Duration::from_secs(EXPONENTIAL_BACKOFF_MAX_SECS),
+            ),
+        ))
+        .build()
 }
 
 fn request_url_with_circuit_breaker<R: Debug>(
