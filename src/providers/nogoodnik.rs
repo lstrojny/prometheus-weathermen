@@ -25,14 +25,12 @@ impl WeatherProvider for Nogoodnik {
         cache: &HttpRequestCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        let _response = request_cached(&HttpCacheRequest::new(
+        request_cached(&HttpCacheRequest::new_json_request(
             SOURCE_URI,
             client,
             cache,
             &Method::GET,
             &Url::parse("http://example.org/404")?,
-            |r| Ok(r.text()?),
-            |v| Ok(v.to_string()),
         ))?;
 
         Err(format_err!("This provider is no good and always fails"))

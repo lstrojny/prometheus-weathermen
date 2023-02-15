@@ -1,5 +1,6 @@
 use crate::providers::HttpRequestCache;
 use anyhow::anyhow;
+use bytes::Bytes;
 use failsafe::backoff::{exponential, Exponential};
 use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
 use failsafe::{CircuitBreaker, Config, Error, StateMachine};
@@ -15,7 +16,7 @@ use std::fmt::Debug;
 use std::sync::RwLock;
 use std::time::Duration;
 
-pub type Cache = MokaCache<(Method, Url), String>;
+pub type Cache = MokaCache<(Method, Url), Bytes>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -34,8 +35,7 @@ pub struct HttpCacheRequest<'a, R: Debug = String> {
     cache: &'a HttpRequestCache,
     method: &'a Method,
     url: &'a Url,
-    to_string: fn(response: Response) -> anyhow::Result<String>,
-    deserialize: fn(string: &str) -> anyhow::Result<R>,
+    deserialize: fn(body: &Bytes) -> anyhow::Result<R>,
 }
 
 const CONSECUTIVE_FAILURE_COUNT: u32 = 3;
@@ -54,8 +54,7 @@ impl HttpCacheRequest<'_> {
         cache: &'a HttpRequestCache,
         method: &'a Method,
         url: &'a Url,
-        to_string: fn(response: Response) -> anyhow::Result<String>,
-        deserialize: fn(string: &str) -> anyhow::Result<T>,
+        deserialize: fn(body: &Bytes) -> anyhow::Result<T>,
     ) -> HttpCacheRequest<'a, T> {
         HttpCacheRequest {
             source,
@@ -63,7 +62,6 @@ impl HttpCacheRequest<'_> {
             cache,
             method,
             url,
-            to_string,
             deserialize,
         }
     }
@@ -75,25 +73,13 @@ impl HttpCacheRequest<'_> {
         method: &'a Method,
         url: &'a Url,
     ) -> HttpCacheRequest<'a, T> {
-        HttpCacheRequest::new::<T>(
-            source,
-            client,
-            cache,
-            method,
-            url,
-            response_to_string,
-            serde_deserialize_body,
-        )
+        HttpCacheRequest::new::<T>(source, client, cache, method, url, serde_deserialize_body)
     }
 }
 
-fn response_to_string(response: Response) -> anyhow::Result<String> {
-    Ok(response.text()?)
-}
-
-fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &str) -> anyhow::Result<T> {
+fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &Bytes) -> anyhow::Result<T> {
     trace!("Deserializing body {body:?}");
-    Ok(serde_json::from_str(body)?)
+    Ok(serde_json::from_slice(body)?)
 }
 
 pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result<R> {
@@ -199,7 +185,7 @@ fn request_url_with_circuit_breaker<R: Debug>(
     circuit_breaker_scope: &str,
     circuit_breaker: &HttpCircuitBreaker,
     request: &HttpCacheRequest<R>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Bytes> {
     match circuit_breaker.call(|| request_url(request)) {
         Err(Error::Inner(e)) => Err(anyhow!(e)),
         Err(Error::Rejected) => Err(anyhow!(
@@ -213,7 +199,7 @@ fn request_url_with_circuit_breaker<R: Debug>(
                 response.status()
             );
 
-            Ok((request.to_string)(response)?)
+            Ok(response.bytes()?)
         }
     }
 }
