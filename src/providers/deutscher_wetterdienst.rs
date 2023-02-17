@@ -187,22 +187,14 @@ fn reqwest_cached_measurement_csv(
         "{BASE_URL}/10minutenwerte_TU_{station_id}_now.zip"
     ))?;
 
-    let key = (method.clone(), url.clone());
-    let value = cache.get(&key);
-
-    if let Some(csv) = value {
-        debug!("Found cached measurement data for {}", station_id);
-        return Ok(csv);
-    }
-
-    debug!("No cached measurement data found for {}", station_id);
-
-    let zip = client.request(method, url).send()?.bytes();
-    let csv = read_measurement_data_zip(&zip?)?;
-
-    cache.insert(key, csv.clone());
-
-    Ok(csv)
+    request_cached(&HttpCacheRequest::new(
+        SOURCE_URI,
+        client,
+        cache,
+        &method,
+        &url,
+        |body| read_measurement_data_zip(body),
+    ))
 }
 
 impl WeatherProvider for DeutscherWetterdienst {
@@ -222,8 +214,11 @@ impl WeatherProvider for DeutscherWetterdienst {
             cache,
             &Method::GET,
             &Url::parse(STATION_LIST_URL)?,
-            |r| Ok(r.text_with_charset("iso-8859-15")?),
-            |b| Ok(parse_weather_station_list_csv(b)),
+            |body| {
+                let str: String = body.iter().map(|&c| c as char).collect();
+
+                Ok(parse_weather_station_list_csv(&str))
+            },
         ))?;
 
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
