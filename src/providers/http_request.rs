@@ -1,6 +1,5 @@
 use crate::providers::HttpRequestCache;
 use anyhow::anyhow;
-use bytes::Bytes;
 use failsafe::backoff::{exponential, Exponential};
 use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
 use failsafe::{CircuitBreaker, Config, Error, StateMachine};
@@ -16,7 +15,7 @@ use std::fmt::Debug;
 use std::sync::RwLock;
 use std::time::Duration;
 
-pub type Cache = MokaCache<(Method, Url), Bytes>;
+pub type Cache = MokaCache<(Method, Url), Vec<u8>>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -35,7 +34,7 @@ pub struct HttpCacheRequest<'a, R: Debug = String> {
     cache: &'a HttpRequestCache,
     method: &'a Method,
     url: &'a Url,
-    deserialize: fn(body: &Bytes) -> anyhow::Result<R>,
+    deserialize: fn(body: &Vec<u8>) -> anyhow::Result<R>,
 }
 
 const CONSECUTIVE_FAILURE_COUNT: u32 = 3;
@@ -54,7 +53,7 @@ impl HttpCacheRequest<'_> {
         cache: &'a HttpRequestCache,
         method: &'a Method,
         url: &'a Url,
-        deserialize: fn(body: &Bytes) -> anyhow::Result<T>,
+        deserialize: fn(body: &Vec<u8>) -> anyhow::Result<T>,
     ) -> HttpCacheRequest<'a, T> {
         HttpCacheRequest {
             source,
@@ -77,7 +76,7 @@ impl HttpCacheRequest<'_> {
     }
 }
 
-fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &Bytes) -> anyhow::Result<T> {
+fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &Vec<u8>) -> anyhow::Result<T> {
     trace!("Deserializing body {body:?}");
     Ok(serde_json::from_slice(body)?)
 }
@@ -185,7 +184,7 @@ fn request_url_with_circuit_breaker<R: Debug>(
     circuit_breaker_scope: &str,
     circuit_breaker: &HttpCircuitBreaker,
     request: &HttpCacheRequest<R>,
-) -> anyhow::Result<Bytes> {
+) -> anyhow::Result<Vec<u8>> {
     match circuit_breaker.call(|| request_url(request)) {
         Err(Error::Inner(e)) => Err(anyhow!(e)),
         Err(Error::Rejected) => Err(anyhow!(
@@ -199,7 +198,7 @@ fn request_url_with_circuit_breaker<R: Debug>(
                 response.status()
             );
 
-            Ok(response.bytes()?)
+            Ok(response.bytes().map(|v| v.to_vec())?)
         }
     }
 }
