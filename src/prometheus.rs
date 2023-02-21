@@ -5,7 +5,7 @@ use prometheus_client::encoding::text::encode;
 use prometheus_client::encoding::EncodeLabelSet;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
-use prometheus_client::registry::Unit;
+use prometheus_client::registry::{Registry, Unit};
 use std::sync::atomic::AtomicU64;
 
 #[derive(Clone, Hash, Eq, PartialEq, EncodeLabelSet, Debug)]
@@ -21,7 +21,7 @@ struct Labels {
 pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
     debug!("Formatting {weathers:?}");
 
-    let mut registry = <prometheus_client::registry::Registry>::with_prefix("weather");
+    let mut registry = Registry::with_prefix("weather");
 
     let temperature = Family::<Labels, Gauge<f64, AtomicU64>>::default();
     registry.register_with_unit(
@@ -33,6 +33,9 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
 
     let humidity = Family::<Labels, Gauge<f64, AtomicU64>>::default();
     let mut humidity_registered = false;
+
+    let station_distance = Family::<Labels, Gauge<f64, AtomicU64>>::default();
+    let mut station_distance_registered = false;
 
     for weather in weathers {
         let labels = Labels {
@@ -48,7 +51,7 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
             .get_or_create(&labels)
             .set(weather.temperature.into());
 
-        weather.relative_humidity.map(|rh| {
+        weather.relative_humidity.map(|relative_humidity_ratio| {
             if !humidity_registered {
                 registry.register_with_unit(
                     "relative_humidity",
@@ -59,7 +62,23 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
                 humidity_registered = true;
             }
 
-            humidity.get_or_create(&labels).set(rh.as_f64())
+            humidity
+                .get_or_create(&labels)
+                .set(relative_humidity_ratio.as_f64())
+        });
+
+        weather.distance.map(|meters| {
+            if !station_distance_registered {
+                registry.register_with_unit(
+                    "station_distance",
+                    format!("{NAME} weather station distance in meters"),
+                    Unit::Meters,
+                    station_distance.clone(),
+                );
+                station_distance_registered = true;
+            }
+
+            station_distance.get_or_create(&labels).set(meters.into())
         });
     }
 
@@ -132,7 +151,8 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
                     location: "My Name".into(),
                     city: "Some City".into(),
                     temperature: Celsius::from(25.5),
-                    relative_humidity: None
+                    relative_humidity: None,
+                    distance: None,
                 }])
                 .expect("Formatting should work")
             )
@@ -165,7 +185,8 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                     location: "My Name".into(),
                     city: "Some City".into(),
                     temperature: Celsius::from(25.5),
-                    relative_humidity: Some(Ratio(0.55))
+                    relative_humidity: Some(Ratio(0.55)),
+                    distance: None,
                 }])
                 .expect("Formatting should work")
             )
@@ -201,7 +222,8 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                         location: "My Name".into(),
                         city: "Some City".into(),
                         temperature: Celsius::from(25.5),
-                        relative_humidity: Some(Ratio(0.55))
+                        relative_humidity: Some(Ratio(0.55)),
+                        distance: None
                     },
                     Weather {
                         source: "com.example".into(),
@@ -212,9 +234,43 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                         location: "Another Name".into(),
                         city: "Another City".into(),
                         temperature: Celsius::from(15.5),
-                        relative_humidity: Some(Ratio(0.75))
+                        relative_humidity: Some(Ratio(0.75)),
+                        distance: None
                     }
                 ])
+                .expect("Formatting should work")
+            )
+        )
+    }
+    #[test]
+    fn format_temperature_and_distance() {
+        assert_str_eq!(
+            format!(
+                r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
+# TYPE weather_temperature_celsius gauge
+# UNIT weather_temperature_celsius celsius
+weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
+# HELP weather_station_distance_meters prometheus-weathermen weather station distance in meters.
+# TYPE weather_station_distance_meters gauge
+# UNIT weather_station_distance_meters meters
+weather_station_distance_meters{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 100.1
+# EOF
+"##,
+                crate::config::VERSION
+            ),
+            sort_output_deterministically(
+                &format(vec![Weather {
+                    source: "org.example".into(),
+                    coordinates: Coordinates {
+                        latitude: Coordinate::from(20.1),
+                        longitude: Coordinate::from(10.01234),
+                    },
+                    location: "My Name".into(),
+                    city: "Some City".into(),
+                    temperature: Celsius::from(25.5),
+                    relative_humidity: None,
+                    distance: Some(100.1.into())
+                }])
                 .expect("Formatting should work")
             )
         )

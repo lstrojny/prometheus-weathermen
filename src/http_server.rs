@@ -41,8 +41,7 @@ pub async fn metrics(
 async fn serve_metrics(unscheduled_tasks: &State<ProviderTasks>) -> (Status, String) {
     let mut join_set = JoinSet::new();
 
-    #[allow(clippy::unnecessary_to_owned)]
-    for task in unscheduled_tasks.to_vec() {
+    for task in unscheduled_tasks.iter().cloned() {
         join_set.spawn(task::spawn_blocking(move || {
             info!(
                 "Requesting weather data for {:?} from {:?} ({:?})",

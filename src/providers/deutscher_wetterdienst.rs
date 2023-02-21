@@ -1,6 +1,8 @@
 use crate::providers::http_request::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Celsius, Coordinate, Coordinates, Ratio};
-use crate::providers::{HttpRequestCache, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{
+    calculate_distance, HttpRequestCache, Weather, WeatherProvider, WeatherRequest,
+};
 use anyhow::anyhow;
 use chrono::Utc;
 use const_format::concatcp;
@@ -235,14 +237,19 @@ impl WeatherProvider for DeutscherWetterdienst {
                     latest_measurement.clone()
                 );
 
+                let coordinates = Coordinates {
+                    latitude: closest_station.latitude.clone(),
+                    longitude: closest_station.longitude.clone(),
+                };
+
+                let distance = calculate_distance(&request.query, &coordinates);
+
                 Ok(Weather {
                     source: SOURCE_URI.into(),
                     location: request.name.clone(),
                     city: closest_station.name.clone(),
-                    coordinates: Coordinates {
-                        latitude: closest_station.latitude.clone(),
-                        longitude: closest_station.longitude.clone(),
-                    },
+                    coordinates,
+                    distance: Some(distance),
                     temperature: latest_measurement.temperature_200_centimers,
                     relative_humidity: Some(latest_measurement.relative_humidity_200_centimeters),
                 })

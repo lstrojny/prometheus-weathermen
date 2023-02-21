@@ -99,8 +99,8 @@ impl From<f64> for Coordinate {
 }
 
 impl From<Coordinate> for f64 {
-    fn from(val: Coordinate) -> Self {
-        val.0
+    fn from(value: Coordinate) -> Self {
+        value.0
     }
 }
 
@@ -110,4 +110,19 @@ pub struct Coordinates {
     pub latitude: Coordinate,
     #[serde(alias = "lon")]
     pub longitude: Coordinate,
+}
+
+#[derive(Debug, Clone)]
+pub struct Meters(f64);
+
+impl From<f64> for Meters {
+    fn from(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Meters> for f64 {
+    fn from(value: Meters) -> Self {
+        value.0
+    }
 }

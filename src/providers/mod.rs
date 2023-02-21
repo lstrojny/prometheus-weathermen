@@ -11,7 +11,8 @@ use crate::providers::meteoblue::Meteoblue;
 use crate::providers::nogoodnik::Nogoodnik;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::tomorrow::Tomorrow;
-use crate::providers::units::{Celsius, Ratio};
+use crate::providers::units::{Celsius, Meters, Ratio};
+use geo::{HaversineDistance, Point};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -64,9 +65,10 @@ pub struct Weather {
     pub location: String,
     pub source: String,
     pub city: String,
+    pub coordinates: Coordinates,
+    pub distance: Option<Meters>,
     pub temperature: Celsius,
     pub relative_humidity: Option<Ratio>,
-    pub coordinates: Coordinates,
 }
 
 #[derive(Debug, Clone)]
@@ -92,3 +94,13 @@ pub trait WeatherProvider: std::fmt::Debug {
 }
 
 pub type HttpRequestCache = http_request::Cache;
+
+pub fn calculate_distance(left: &Coordinates, right: &Coordinates) -> Meters {
+    let dist: f64 = Point::new(left.latitude.clone().into(), left.longitude.clone().into())
+        .haversine_distance(&Point::new(
+            right.latitude.clone().into(),
+            right.longitude.clone().into(),
+        ));
+
+    dist.into()
+}
