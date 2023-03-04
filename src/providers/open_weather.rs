@@ -1,6 +1,8 @@
 use crate::providers::http_request::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Coordinates, Kelvin, Ratio, ToCelsius};
-use crate::providers::{HttpRequestCache, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{
+    calculate_distance, HttpRequestCache, Weather, WeatherProvider, WeatherRequest,
+};
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use rocket::serde::Deserialize;
@@ -60,13 +62,16 @@ impl WeatherProvider for OpenWeather {
             &url,
         ))?;
 
+        let distance = calculate_distance(&request.query, &response.coord);
+
         Ok(Weather {
             source: SOURCE_URI.into(),
             location: request.name.clone(),
             city: response.name,
+            coordinates: response.coord,
+            distance: Some(distance),
             temperature: response.main.temp.to_celsius(),
             relative_humidity: Some(response.main.humidity),
-            coordinates: response.coord,
         })
     }
 

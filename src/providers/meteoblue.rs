@@ -1,6 +1,8 @@
 use crate::providers::http_request::{request_cached, Configuration, HttpCacheRequest};
 use crate::providers::units::{Celsius, Coordinates};
-use crate::providers::{HttpRequestCache, Weather, WeatherProvider, WeatherRequest};
+use crate::providers::{
+    calculate_distance, HttpRequestCache, Weather, WeatherProvider, WeatherRequest,
+};
 use hmac::{Hmac, Mac};
 use reqwest::blocking::Client;
 use reqwest::{Method, Url};
@@ -59,18 +61,7 @@ impl WeatherProvider for Meteoblue {
             ],
         )?;
 
-        let mut mac = HmacSha256::new_from_slice(self.api_key.as_bytes())?;
-
-        mac.update(url.path().as_bytes());
-        mac.update(b"?");
-        mac.update(
-            url.query()
-                .expect("Query cannot be empty as it was set above")
-                .as_bytes(),
-        );
-        let key = mac.finalize();
-
-        let sig = hex::encode(key.into_bytes());
+        let sig = create_signature(&self.api_key, &url)?;
 
         let signed_url = Url::parse_with_params(url.as_str(), &[("sig", sig)])?;
 
@@ -82,6 +73,8 @@ impl WeatherProvider for Meteoblue {
             &signed_url,
         ))?;
 
+        let distance = calculate_distance(&request.query, &response.metadata.coordinates);
+
         Ok(Weather {
             source: SOURCE_URI.into(),
             location: request.name.clone(),
@@ -90,13 +83,29 @@ impl WeatherProvider for Meteoblue {
             } else {
                 response.metadata.name
             },
+            coordinates: response.metadata.coordinates,
+            distance: Some(distance),
             temperature: response.data_current.temperature,
             relative_humidity: None,
-            coordinates: response.metadata.coordinates,
         })
     }
 
     fn refresh_interval(&self) -> Duration {
         self.cache.refresh_interval
     }
+}
+
+fn create_signature(api_key: &str, url: &Url) -> anyhow::Result<String> {
+    let mut mac = HmacSha256::new_from_slice(api_key.as_bytes())?;
+
+    mac.update(url.path().as_bytes());
+    mac.update(b"?");
+    mac.update(
+        url.query()
+            .expect("Query cannot be empty as it was set above")
+            .as_bytes(),
+    );
+    let key = mac.finalize();
+
+    Ok(hex::encode(key.into_bytes()))
 }
