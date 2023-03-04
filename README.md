@@ -9,19 +9,20 @@ A prometheus exporter endpoint for weather data or my excuse to do some Rust for
 Provides a Prometheus metrics endpoint on `<host>:36333/metrics` and serves the following metrics for configured
 location from each configured provider:
 
--   `weather_temperature_celsius`
--   `weather_relative_humidity_ratio`
+-   `weather_temperature_celsius`: Temperature in celsius
+-   `weather_relative_humidity_ratio`: Humidify ratio (0.0 to 1.0)
+-   `weather_station_distance_meters`: Distance of the weather station in meters
 
 ### Supported providers
 
 The following services are implemented as providers. Each configured provider is queried for weather information.
 
-| Provider                                      | Resolution | Coverage  | Supports humidity | Registration required |
-| --------------------------------------------- | ---------- | --------- | ----------------- | --------------------- |
-| [Meteoblue](https://www.meteoblue.com/)       | High       | Worldwide | ❌                | Yes                   |
-| [OpenWeather](https://openweathermap.org/)    | Medium     | Worldwide | ✅                | Yes                   |
-| [tomorrow.io](https://www.tomorrow.io/)       | High       | Worldwide | ✅                | Yes                   |
-| [Deutscher Wetterdienst](https://www.dwd.de/) | Medium     | Germany   | ✅                | No                    |
+| Provider                                      | Resolution | Coverage  | Supports humidity | Supports distance | Registration required |
+|-----------------------------------------------|------------|-----------|-------------------|-------------------|-----------------------|
+| [Meteoblue](https://www.meteoblue.com/)       | High       | Worldwide | ❌                 | ✅                 | Yes                   |
+| [OpenWeather](https://openweathermap.org/)    | Medium     | Worldwide | ✅                 | ✅                 | Yes                   |
+| [tomorrow.io](https://www.tomorrow.io/)       | High       | Worldwide | ✅                 | ❌                 | Yes                   |
+| [Deutscher Wetterdienst](https://www.dwd.de/) | Medium     | Germany   | ✅                 | ✅                 | No                    |
 
 You need to register an account for those providers that require an API key.
 
