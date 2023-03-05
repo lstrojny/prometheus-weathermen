@@ -219,7 +219,7 @@ fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Gran
     Err(Denied::Forbidden)
 }
 
-fn sort_media_types(accept: &Accept) -> Vec<&QMediaType> {
+fn sort_media_types_by_priority(accept: &Accept) -> Vec<&QMediaType> {
     let mut vec: Vec<&QMediaType> = accept.iter().collect();
     vec.sort_by(|&left, &right| {
         right
@@ -248,20 +248,18 @@ fn get_metrics_format(accept: &Accept) -> Format {
     let open_metrics_media_type = MediaType::new("application", "openmetrics-text");
     let text_plain_media_type = MediaType::new("text", "plain");
 
-    let text_plain_q_media_type: QMediaType = text_plain_media_type.clone().into();
+    let media_types_by_priority = sort_media_types_by_priority(accept);
 
-    let vec = sort_media_types(accept);
-
-    let media_type = vec
+    let first_matching_media_type = media_types_by_priority
         .iter()
         .find(|&media_type| {
             media_type.media_type() == &open_metrics_media_type
                 || media_type.media_type() == &text_plain_media_type
         })
-        .unwrap_or(&&text_plain_q_media_type)
-        .media_type();
+        .map(|media_type| media_type.media_type())
+        .unwrap_or(&&text_plain_media_type);
 
-    if media_type == &open_metrics_media_type {
+    if first_matching_media_type == &open_metrics_media_type {
         Format::OpenMetrics
     } else {
         Format::Prometheus
@@ -338,7 +336,7 @@ mod tests {
     }
 
     mod content_negotiation {
-        use crate::http_server::{get_metrics_format, sort_media_types};
+        use crate::http_server::{get_metrics_format, sort_media_types_by_priority};
         use crate::prometheus::Format;
         use rocket::http::{Accept, MediaType, QMediaType};
         use std::str::FromStr;
@@ -352,7 +350,7 @@ mod tests {
                     &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                 ],
-                sort_media_types(&Accept::new(vec![
+                sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     QMediaType(MediaType::new("text", "html"), None),
                     QMediaType(MediaType::new("application", "json"), None),
@@ -366,7 +364,7 @@ mod tests {
                     &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     &QMediaType(MediaType::new("application", "json"), Some(0.1)),
                 ],
-                sort_media_types(&Accept::new(vec![
+                sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("text", "plain"), None),
                     QMediaType(MediaType::new("application", "json"), Some(0.1)),
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
@@ -378,7 +376,7 @@ mod tests {
         fn sort_prefer_media_type_without_priority_from_string() {
             assert_eq!(
                 vec!["text/plain", "application/openmetrics-text"],
-                sort_media_types(
+                sort_media_types_by_priority(
                     &Accept::from_str("text/plain, application/openmetrics-text;q=0.9")
                         .expect("Must parse")
                 )
@@ -395,7 +393,7 @@ mod tests {
                     &QMediaType(MediaType::new("text", "plain"), Some(1.0)),
                     &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                 ],
-                sort_media_types(&Accept::new(vec![
+                sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     QMediaType(MediaType::new("text", "plain"), Some(1.0)),
                 ]))
@@ -409,7 +407,7 @@ mod tests {
                     &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                     &QMediaType(MediaType::new("application", "*"), Some(0.9)),
                 ],
-                sort_media_types(&Accept::new(vec![
+                sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "*"), Some(0.9)),
                     QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                 ]))
@@ -436,7 +434,7 @@ mod tests {
                     ),
                     &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                 ],
-                sort_media_types(&Accept::new(vec![
+                sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                     QMediaType(
                         MediaType::new("text", "plain").with_params(vec![("charset", "utf8")]),
