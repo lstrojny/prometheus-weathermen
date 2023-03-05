@@ -387,13 +387,13 @@ mod tests {
         #[test]
         fn sort_prefer_media_type_without_priority_from_string() {
             assert_eq!(
-                vec!["text/plain", "application/openmetrics-text"],
+                vec!["text/plain", "application/openmetrics-text; q=0.9"],
                 sort_media_types_by_priority(
                     &Accept::from_str("text/plain, application/openmetrics-text;q=0.9")
                         .expect("Must parse")
                 )
                 .iter()
-                .map(|v| format!("{}/{}", v.media_type().top(), v.media_type().sub()))
+                .map(|v| v.to_string())
                 .collect::<Vec<String>>()
             );
         }
@@ -463,6 +463,45 @@ mod tests {
                         Some(0.9)
                     ),
                 ]))
+            );
+        }
+
+        #[test]
+        fn sort_prometheus_header() {
+            // See https://github.com/prometheus/prometheus/blob/75e5d600d9288cb1b573d6830356c94c991153a1/scrape/scrape.go#L785
+            assert_eq!(
+                vec![
+                    "application/openmetrics-text; version=1.0.0",
+                    "application/openmetrics-text; version=0.0.1; q=0.75",
+                    "text/plain; version=0.0.4; q=0.5", "*/*; q=0.1"
+                ],
+                sort_media_types_by_priority(
+                    &Accept::from_str("application/openmetrics-text;version=1.0.0,application/openmetrics-text;version=0.0.1;q=0.75,text/plain;version=0.0.4;q=0.5,*/*;q=0.1".into())
+                        .expect("Must parse")
+                )
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+            );
+        }
+
+        #[test]
+        fn sort_complicated_sorting() {
+            assert_eq!(
+                vec![
+                    "text/plain; q=1.0; charset=utf-8; version=0.0.4",
+                    "text/plain; q=0.95; version=0.0.4",
+                    "application/openmetrics-text; q=0.9; version=1.0.0",
+                    "application/openmetrics-text; q=0.8; version=0.0.1",
+                    "*/*; q=0.1"
+                ],
+                sort_media_types_by_priority(
+                    &Accept::from_str("application/openmetrics-text;q=0.9;version=1.0.0,application/openmetrics-text;q=0.8;version=0.0.1,text/plain;q=0.95;version=0.0.4,text/plain;q=1.0;charset=utf-8;version=0.0.4,*/*;q=0.1".into())
+                        .expect("Must parse")
+                )
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<String>>()
             );
         }
 
