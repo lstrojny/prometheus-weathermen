@@ -26,7 +26,7 @@ pub fn index(
         Ok(_) => Ok(MetricsResponse::new(
             Status::NotFound,
             get_metrics_format(accept),
-            "# Check /metrics".into(),
+            "Check /metrics".into(),
         )),
         Err(e) => auth_error_to_response(&e),
     }
@@ -112,13 +112,18 @@ pub struct MetricsResponse {
 impl MetricsResponse {
     fn new(status: Status, content_type: Format, response: String) -> Self {
         Self {
-            content_type: match content_type {
-                Format::Prometheus => {
-                    ContentType::new("text", "plain").with_params(("charset", "utf-8"))
+            content_type: if status.class().is_success() {
+                match content_type {
+                    Format::OpenMetrics => Some(
+                        ContentType::new("application", "openmetrics-text")
+                            .with_params([("version", "1.0.0"), ("charset", "utf-8")]),
+                    ),
+                    Format::Prometheus => None,
                 }
-                Format::OpenMetrics => ContentType::new("application", "openmetrics-text")
-                    .with_params([("version", "1.0.0"), ("charset", "utf-8")]),
-            },
+            } else {
+                None
+            }
+            .unwrap_or_else(|| ContentType::new("text", "plain").with_params(("charset", "utf-8"))),
             response: (status, response),
         }
     }
