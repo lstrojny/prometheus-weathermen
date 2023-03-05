@@ -112,18 +112,17 @@ pub struct MetricsResponse {
 impl MetricsResponse {
     fn new(status: Status, content_type: Format, response: String) -> Self {
         Self {
-            content_type: if status.class().is_success() {
-                match content_type {
-                    Format::OpenMetrics => Some(
+            content_type: status
+                .class()
+                .is_success()
+                .then(|| content_type == Format::OpenMetrics)
+                .map_or_else(
+                    || ContentType::new("text", "plain").with_params(("charset", "utf-8")),
+                    |_v| {
                         ContentType::new("application", "openmetrics-text")
-                            .with_params([("version", "1.0.0"), ("charset", "utf-8")]),
-                    ),
-                    Format::Prometheus => None,
-                }
-            } else {
-                None
-            }
-            .unwrap_or_else(|| ContentType::new("text", "plain").with_params(("charset", "utf-8"))),
+                            .with_params([("version", "1.0.0"), ("charset", "utf-8")])
+                    },
+                ),
             response: (status, response),
         }
     }
@@ -256,8 +255,7 @@ fn get_metrics_format(accept: &Accept) -> Format {
             media_type.media_type() == &open_metrics_media_type
                 || media_type.media_type() == &text_plain_media_type
         })
-        .map(|media_type| media_type.media_type())
-        .unwrap_or(&&text_plain_media_type);
+        .map_or(&text_plain_media_type, |media_type| media_type.media_type());
 
     if first_matching_media_type == &open_metrics_media_type {
         Format::OpenMetrics
