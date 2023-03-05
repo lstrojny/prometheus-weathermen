@@ -1,7 +1,7 @@
 use crate::config;
 use config::NAME;
 use log::{debug, error, info, trace};
-use rocket::http::{Accept, ContentType, Header, MediaType, QMediaType, Status};
+use rocket::http::{Accept, ContentType, Header, QMediaType, Status};
 use rocket::{get, Either, Responder, State};
 use rocket_basicauth::BasicAuth;
 use std::cmp::Ordering;
@@ -116,13 +116,9 @@ impl MetricsResponse {
                 .class()
                 .is_success()
                 .then(|| content_type == Format::OpenMetrics)
-                .map_or_else(
-                    || ContentType::new("text", "plain").with_params(("charset", "utf-8")),
-                    |_v| {
-                        ContentType::new("application", "openmetrics-text")
-                            .with_params([("version", "1.0.0"), ("charset", "utf-8")])
-                    },
-                ),
+                .map_or_else(get_text_plain_content_type, |_| {
+                    get_openmetrics_content_type()
+                }),
             response: (status, response),
         }
     }
@@ -243,21 +239,32 @@ fn sort_media_types_by_priority(accept: &Accept) -> Vec<&QMediaType> {
     vec
 }
 
+fn get_openmetrics_content_type() -> ContentType {
+    ContentType::new("application", "openmetrics-text")
+        .with_params([("version", "1.0.0"), ("charset", "utf-8")])
+}
+
+fn get_text_plain_content_type() -> ContentType {
+    ContentType::new("text", "plain").with_params([("charset", "utf-8"), ("version", "0.0.4")])
+}
+
 fn get_metrics_format(accept: &Accept) -> Format {
-    let open_metrics_media_type = MediaType::new("application", "openmetrics-text");
-    let text_plain_media_type = MediaType::new("text", "plain");
+    let openmetrics_content_type = get_openmetrics_content_type();
+    let openmetrics_media_type = openmetrics_content_type.media_type();
+    let text_plain_content_type = get_text_plain_content_type();
+    let text_plain_media_type = text_plain_content_type.media_type();
 
     let media_types_by_priority = sort_media_types_by_priority(accept);
 
     let first_matching_media_type = media_types_by_priority
         .iter()
         .find(|&media_type| {
-            media_type.media_type() == &open_metrics_media_type
-                || media_type.media_type() == &text_plain_media_type
+            media_type.media_type() == openmetrics_media_type
+                || media_type.media_type() == text_plain_media_type
         })
-        .map_or(&text_plain_media_type, |media_type| media_type.media_type());
+        .map_or(text_plain_media_type, |&media_type| media_type.media_type());
 
-    if first_matching_media_type == &open_metrics_media_type {
+    if first_matching_media_type == openmetrics_media_type {
         Format::OpenMetrics
     } else {
         Format::Prometheus
