@@ -115,7 +115,8 @@ impl MetricsResponse {
             content_type: status
                 .class()
                 .is_success()
-                .then(|| content_type == Format::OpenMetrics)
+                .then(|| (content_type == Format::OpenMetrics))
+                .filter(|&v| v)
                 .map_or_else(get_text_plain_content_type, |_| {
                     get_openmetrics_content_type()
                 }),
@@ -239,13 +240,17 @@ fn sort_media_types_by_priority(accept: &Accept) -> Vec<&QMediaType> {
     vec
 }
 
+const fn get_content_type_params(version: &str) -> [(&str, &str); 2] {
+    [("charset", "utf-8"), ("version", version)]
+}
+
 fn get_openmetrics_content_type() -> ContentType {
     ContentType::new("application", "openmetrics-text")
-        .with_params([("version", "1.0.0"), ("charset", "utf-8")])
+        .with_params(get_content_type_params("1.0.0"))
 }
 
 fn get_text_plain_content_type() -> ContentType {
-    ContentType::new("text", "plain").with_params([("charset", "utf-8"), ("version", "0.0.4")])
+    ContentType::new("text", "plain").with_params(get_content_type_params("0.0.4"))
 }
 
 fn get_metrics_format(accept: &Accept) -> Format {
@@ -265,8 +270,10 @@ fn get_metrics_format(accept: &Accept) -> Format {
         .map_or(text_plain_media_type, |&media_type| media_type.media_type());
 
     if first_matching_media_type == openmetrics_media_type {
+        trace!("Negotiated OpenMetrics content type");
         Format::OpenMetrics
     } else {
+        trace!("Negotiated Prometheus content type");
         Format::Prometheus
     }
 }
