@@ -101,15 +101,15 @@ mod tests {
     use crate::providers::units::Ratio::Ratio;
     use crate::providers::units::{Celsius, Coordinate, Coordinates};
     use crate::providers::Weather;
-    use assert_str::assert_str_eq;
+    use pretty_assertions::assert_str_eq;
     use std::cmp::Ordering;
 
     fn sort_output_deterministically(output: &str) -> String {
         let mut lines: Vec<&str> = output.lines().collect();
 
         lines.sort_by(|left, right| {
-            let left_is_comment = left.starts_with("#");
-            let right_is_comment = right.starts_with("#");
+            let left_is_comment = left.starts_with('#');
+            let right_is_comment = right.starts_with('#');
             let left_metric_id = get_metric_identifier(left, left_is_comment);
             let right_metric_id = get_metric_identifier(right, right_is_comment);
 
@@ -118,7 +118,7 @@ mod tests {
                 return Ordering::Equal;
             }
 
-            return left.partial_cmp(right).unwrap_or(Ordering::Equal);
+            left.partial_cmp(right).unwrap_or(Ordering::Equal)
         });
 
         lines.join("\n")
@@ -126,10 +126,10 @@ mod tests {
 
     fn get_metric_identifier(line: &str, is_comment: bool) -> String {
         if is_comment {
-            line.split(" ").nth(2).unwrap_or(&"".to_string()).into()
+            line.split(' ').nth(2).unwrap_or("").into()
         } else {
-            line.split("{")
-                .nth(0)
+            line.split('{')
+                .next()
                 .expect("Could not extract identifier from metric line")
                 .into()
         }
@@ -143,8 +143,7 @@ mod tests {
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
 weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
@@ -165,7 +164,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
                 )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 
     #[test]
@@ -180,8 +179,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # TYPE weather_relative_humidity_ratio gauge
 # UNIT weather_relative_humidity_ratio ratio
 weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
@@ -202,7 +200,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                 )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 
     #[test]
@@ -219,8 +217,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # UNIT weather_relative_humidity_ratio ratio
 weather_relative_humidity_ratio{{version="{0}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 0.75
 weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
@@ -255,7 +252,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                 )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
     #[test]
     fn format_temperature_and_distance() {
@@ -269,8 +266,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # TYPE weather_station_distance_meters gauge
 # UNIT weather_station_distance_meters meters
 weather_station_distance_meters{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 100.1
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
@@ -291,6 +287,6 @@ weather_station_distance_meters{{version="{0}",source="org.example",location="My
                 )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 }

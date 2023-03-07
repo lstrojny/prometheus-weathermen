@@ -1,23 +1,38 @@
 use crate::config;
 use config::NAME;
 use log::{debug, error, info, trace};
-use rocket::http::{Accept, ContentType, Header, QMediaType, Status};
-use rocket::{get, Either, Responder, State};
+use once_cell::sync::Lazy;
+use rocket::http::{Accept, ContentType, Header, MediaType, QMediaType, Status};
+use rocket::{get, routes, Build, Either, Responder, Rocket, State};
 use rocket_basicauth::BasicAuth;
 use std::cmp::Ordering;
 
-use crate::config::CredentialsStore;
 use crate::config::ProviderTasks;
+use crate::config::{get_provider_tasks, Config, CredentialsStore};
 
+use crate::error::exit_if_handle_fatal;
 use crate::prometheus::{format_metrics, Format};
 use crate::providers::Weather;
 use rocket::tokio::task;
 use rocket::tokio::task::JoinSet;
 use tokio::task::JoinError;
 
+pub async fn configure_rocket(config: Config) -> Rocket<Build> {
+    let config_clone = config.clone();
+    let tasks = task::spawn_blocking(move || get_provider_tasks(config_clone))
+        .await
+        .unwrap_or_else(exit_if_handle_fatal)
+        .unwrap_or_else(exit_if_handle_fatal);
+
+    rocket::custom(config.http)
+        .manage(tasks)
+        .manage(config.auth)
+        .mount("/", routes![index, metrics])
+}
+
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
-pub fn index(
+fn index(
     credentials_store: &State<Option<CredentialsStore>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
@@ -33,7 +48,7 @@ pub fn index(
 }
 
 #[get("/metrics")]
-pub async fn metrics(
+async fn metrics(
     unscheduled_tasks: &State<ProviderTasks>,
     credentials_store: &State<Option<CredentialsStore>>,
     credentials_presented: Option<BasicAuth>,
@@ -115,7 +130,7 @@ impl MetricsResponse {
             content_type: status
                 .class()
                 .is_success()
-                .then(|| (content_type == Format::OpenMetrics))
+                .then(|| content_type == Format::OpenMetrics)
                 .filter(|&v| v)
                 .map_or_else(get_text_plain_content_type, |_| {
                     get_openmetrics_content_type()
@@ -253,29 +268,37 @@ fn get_text_plain_content_type() -> ContentType {
     ContentType::new("text", "plain").with_params(get_content_type_params("0.0.4"))
 }
 
-fn get_metrics_format(accept: &Accept) -> Format {
-    let openmetrics_content_type = get_openmetrics_content_type();
-    let openmetrics_media_type = openmetrics_content_type.media_type();
-    let text_plain_content_type = get_text_plain_content_type();
-    let text_plain_media_type = text_plain_content_type.media_type();
+static MEDIA_TYPE_FORMATS: Lazy<Vec<(MediaType, Format)>> = Lazy::new(|| {
+    vec![
+        (
+            get_openmetrics_content_type().media_type().clone(),
+            Format::OpenMetrics,
+        ),
+        (
+            get_text_plain_content_type().media_type().clone(),
+            Format::Prometheus,
+        ),
+    ]
+});
 
+fn get_metrics_format(accept: &Accept) -> Format {
     let media_types_by_priority = sort_media_types_by_priority(accept);
 
-    let first_matching_media_type = media_types_by_priority
+    media_types_by_priority
         .iter()
-        .find(|&media_type| {
-            media_type.media_type() == openmetrics_media_type
-                || media_type.media_type() == text_plain_media_type
+        .find_map(|&given_media_type| {
+            MEDIA_TYPE_FORMATS
+                .iter()
+                .find_map(|(expected_media_type, format)| {
+                    media_type_matches(expected_media_type, given_media_type.media_type())
+                        .then_some(*format)
+                })
         })
-        .map_or(text_plain_media_type, |&media_type| media_type.media_type());
+        .unwrap_or(Format::Prometheus)
+}
 
-    if first_matching_media_type == openmetrics_media_type {
-        trace!("Negotiated OpenMetrics content type");
-        Format::OpenMetrics
-    } else {
-        trace!("Negotiated Prometheus content type");
-        Format::Prometheus
-    }
+fn media_type_matches(left: &MediaType, right: &MediaType) -> bool {
+    left == right || (left.top() == right.top() && (left.sub() == "*" || right.sub() == "*"))
 }
 
 #[cfg(test)]
@@ -283,11 +306,12 @@ mod tests {
     mod authentication {
         use crate::config::CredentialsStore;
         use crate::http_server::{maybe_authenticate, Denied, Granted};
+        use pretty_assertions::assert_eq;
         use rocket_basicauth::BasicAuth;
 
         #[test]
         fn false_if_no_authentication_required() {
-            assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None))
+            assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None));
         }
 
         #[test]
@@ -350,8 +374,19 @@ mod tests {
     mod content_negotiation {
         use crate::http_server::{get_metrics_format, sort_media_types_by_priority};
         use crate::prometheus::Format;
+        use pretty_assertions::assert_eq;
         use rocket::http::{Accept, MediaType, QMediaType};
         use std::str::FromStr;
+
+        // See https://github.com/prometheus/prometheus/blob/75e5d600d9288cb1b573d6830356c94c991153a1/scrape/scrape.go#L785
+        static PROMETHEUS_SCRAPER_ACCEPT_HEADER: &str = "application/openmetrics-text;version=1.0.0,application/openmetrics-text;version=0.0.1;q=0.75,text/plain;version=0.0.4;q=0.5,*/*;q=0.1";
+
+        // See https://github.com/chromium/chromium/blob/04385e5d572e727897340223d54689e34ed6725e/content/common/content_constants_internal.cc#L24
+        static CHROME_ACCEPT_HEADER: &str = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7";
+
+        // See https://searchfox.org/mozilla-central/rev/00ea1649b59d5f427979e2d6ba42be96f62d6e82/netwerk/protocol/http/nsHttpHandler.cpp#229
+        static FIREFOX_ACCEPT_HEADER: &str =
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8";
 
         #[test]
         fn sort_prefer_media_type_without_priority() {
@@ -390,7 +425,7 @@ mod tests {
                 vec!["text/plain", "application/openmetrics-text; q=0.9"],
                 sort_media_types_by_priority(
                     &Accept::from_str("text/plain, application/openmetrics-text;q=0.9")
-                        .expect("Must parse")
+                        .expect("Accept header value should parse")
                 )
                 .iter()
                 .map(|v| v.to_string())
@@ -468,20 +503,20 @@ mod tests {
 
         #[test]
         fn sort_prometheus_header() {
-            // See https://github.com/prometheus/prometheus/blob/75e5d600d9288cb1b573d6830356c94c991153a1/scrape/scrape.go#L785
             assert_eq!(
                 vec![
                     "application/openmetrics-text; version=1.0.0",
                     "application/openmetrics-text; version=0.0.1; q=0.75",
-                    "text/plain; version=0.0.4; q=0.5", "*/*; q=0.1"
+                    "text/plain; version=0.0.4; q=0.5",
+                    "*/*; q=0.1"
                 ],
                 sort_media_types_by_priority(
-                    &Accept::from_str("application/openmetrics-text;version=1.0.0,application/openmetrics-text;version=0.0.1;q=0.75,text/plain;version=0.0.4;q=0.5,*/*;q=0.1".into())
-                        .expect("Must parse")
+                    &Accept::from_str(PROMETHEUS_SCRAPER_ACCEPT_HEADER)
+                        .expect("Accept header value should parse")
                 )
-                    .iter()
-                    .map(|v| v.to_string())
-                    .collect::<Vec<String>>()
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<String>>()
             );
         }
 
@@ -496,22 +531,22 @@ mod tests {
                     "*/*; q=0.1"
                 ],
                 sort_media_types_by_priority(
-                    &Accept::from_str("application/openmetrics-text;q=0.9;version=1.0.0,application/openmetrics-text;q=0.8;version=0.0.1,text/plain;q=0.95;version=0.0.4,text/plain;q=1.0;charset=utf-8;version=0.0.4,*/*;q=0.1".into())
+                    &Accept::from_str("application/openmetrics-text;q=0.9;version=1.0.0,application/openmetrics-text;q=0.8;version=0.0.1,text/plain;q=0.95;version=0.0.4,text/plain;q=1.0;charset=utf-8;version=0.0.4,*/*;q=0.1")
                         .expect("Must parse")
                 )
-                .iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<String>>()
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
             );
         }
 
         #[test]
         fn prometheus_if_no_preference() {
-            assert_eq!(Format::Prometheus, get_metrics_format(&Accept::new(vec![])))
+            assert_eq!(Format::Prometheus, get_metrics_format(&Accept::new(vec![])));
         }
 
         #[test]
-        fn open_metrics_if_available() {
+        fn openmetrics_if_available() {
             assert_eq!(
                 Format::OpenMetrics,
                 get_metrics_format(&Accept::new(vec![MediaType::new(
@@ -519,7 +554,7 @@ mod tests {
                     "openmetrics-text"
                 )
                 .into()]))
-            )
+            );
         }
 
         #[test]
@@ -527,7 +562,7 @@ mod tests {
             assert_eq!(
                 Format::Prometheus,
                 get_metrics_format(&Accept::new(vec![MediaType::new("text", "plain").into()]))
-            )
+            );
         }
 
         #[test]
@@ -555,6 +590,70 @@ mod tests {
                         Some(0.9)
                     ),
                 ]))
+            );
+        }
+
+        #[test]
+        fn openmetrics_if_more_specific() {
+            assert_eq!(
+                Format::OpenMetrics,
+                get_metrics_format(
+                    &Accept::from_str(
+                        "text/*;q=0.95,application/openmetrics-text;q=0.95;version=1.0.0,*/*;q=0.1"
+                    )
+                    .expect("Must parse")
+                )
+            );
+        }
+
+        #[test]
+        fn openmetrics_if_partial_match() {
+            assert_eq!(
+                Format::OpenMetrics,
+                get_metrics_format(
+                    &Accept::from_str("application/*,*/*;q=0.1")
+                        .expect("Accept header value should parse")
+                )
+            );
+            assert_eq!(
+                Format::OpenMetrics,
+                get_metrics_format(
+                    &Accept::from_str("application/*;q=1.0,text/plain;q=0.9,*/*;q=0.1")
+                        .expect("Must parse")
+                )
+            );
+        }
+
+        #[test]
+        fn prometheus_for_firefox() {
+            assert_eq!(
+                Format::Prometheus,
+                get_metrics_format(
+                    &Accept::from_str(FIREFOX_ACCEPT_HEADER)
+                        .expect("Accept header value should parse")
+                )
+            );
+        }
+
+        #[test]
+        fn prometheus_for_chrome() {
+            assert_eq!(
+                Format::Prometheus,
+                get_metrics_format(
+                    &Accept::from_str(CHROME_ACCEPT_HEADER)
+                        .expect("Accept header value should parse")
+                )
+            );
+        }
+
+        #[test]
+        fn openmetrics_for_prometheus_scraper() {
+            assert_eq!(
+                Format::OpenMetrics,
+                get_metrics_format(
+                    &Accept::from_str(PROMETHEUS_SCRAPER_ACCEPT_HEADER)
+                        .expect("Accept header value should parse")
+                )
             );
         }
     }

@@ -7,16 +7,14 @@
 #![warn(clippy::unwrap_used)]
 #![allow(clippy::no_effect_underscore_binding)]
 
-use crate::config::{get_provider_tasks, read, DEFAULT_CONFIG};
-use crate::http_server::{index, metrics};
+use crate::config::{read, DEFAULT_CONFIG};
+use crate::error::exit_if_handle_fatal;
 use clap::{arg, command, Parser};
-use log::error;
-use rocket::{launch, routes};
+use rocket::launch;
 use std::path::PathBuf;
-use std::process::exit;
-use tokio::task;
 
 mod config;
+mod error;
 mod http_server;
 mod logging;
 mod prometheus;
@@ -50,17 +48,8 @@ struct Args {
     config: PathBuf,
 }
 
-fn handle_fatal_error<E, R>(error: E) -> R
-where
-    E: std::fmt::Display,
-{
-    error!("Fatal error: {error}");
-
-    exit(1)
-}
-
 #[launch]
-async fn rocket() -> _ {
+pub async fn start_server() -> _ {
     let args = Args::parse();
 
     let log_level = args
@@ -70,16 +59,7 @@ async fn rocket() -> _ {
 
     logging::init(log_level).expect("Logging successfully initialied");
 
-    let config = read(args.config, log_level).unwrap_or_else(handle_fatal_error);
+    let config = read(args.config, log_level).unwrap_or_else(exit_if_handle_fatal);
 
-    let config_clone = config.clone();
-    let tasks = task::spawn_blocking(move || get_provider_tasks(config_clone))
-        .await
-        .unwrap_or_else(handle_fatal_error)
-        .unwrap_or_else(handle_fatal_error);
-
-    rocket::custom(config.http)
-        .manage(tasks)
-        .manage(config.auth)
-        .mount("/", routes![index, metrics])
+    http_server::configure_rocket(config).await
 }
