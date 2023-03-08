@@ -66,6 +66,12 @@ jobs:
         with:
           command: clippy
 
+      - name: Static analysis with clippy
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: clippy
+          args: --tests
+
       - name: Run tests
         uses: actions-rs/cargo@v1.0.3
         with:

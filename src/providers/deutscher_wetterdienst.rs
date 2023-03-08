@@ -273,6 +273,7 @@ mod tests {
         use crate::providers::deutscher_wetterdienst::{
             parse_weather_station_list_csv, WeatherStation,
         };
+        use pretty_assertions::assert_eq;
 
         #[test]
         fn parse_short_list() {
@@ -281,10 +282,10 @@ mod tests {
                 name: "Großenkneten".into(),
                 latitude: 52.9336.into(),
                 longitude: 8.2370.into(),
-            }], parse_weather_station_list_csv(&"Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+            }], parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
 00044 20070209 20230111             44     52.9336    8.2370 Großenkneten                             Niedersachsen                                                                                     \n\
-".to_string()));
+"));
         }
     }
 
@@ -293,6 +294,7 @@ mod tests {
             find_closest_weather_station, WeatherStation,
         };
         use crate::providers::units::Coordinates;
+        use pretty_assertions::assert_eq;
 
         #[test]
         fn find_closest_station_to_a_coordinate() {
@@ -306,9 +308,9 @@ mod tests {
                 find_closest_weather_station(
                     &Coordinates {
                         latitude: 48.11591.into(),
-                        longitude: 11.570906.into(),
+                        longitude: 11.570_906.into(),
                     },
-                    &vec![
+                    &[
                         WeatherStation {
                             station_id: "03379".into(),
                             name: "München-Stadt".into(),
@@ -330,25 +332,26 @@ mod tests {
 
     mod strip_duplicate_spaces {
         use crate::providers::deutscher_wetterdienst::strip_duplicate_spaces;
+        use pretty_assertions::assert_str_eq;
 
         #[test]
         fn not_stripped_if_not_needed() {
-            assert_eq!("foo bar", strip_duplicate_spaces("foo bar"));
+            assert_str_eq!("foo bar", strip_duplicate_spaces("foo bar"));
         }
 
         #[test]
         fn strips_two_spaces() {
-            assert_eq!("foo bar", strip_duplicate_spaces("foo  bar"));
+            assert_str_eq!("foo bar", strip_duplicate_spaces("foo  bar"));
         }
 
         #[test]
         fn strips_more_than_two_spaces() {
-            assert_eq!("foo bar", strip_duplicate_spaces("foo   bar"));
+            assert_str_eq!("foo bar", strip_duplicate_spaces("foo   bar"));
         }
 
         #[test]
         fn strips_multiple_occurrences() {
-            assert_eq!("foo bar baz ", strip_duplicate_spaces("foo   bar   baz "));
+            assert_str_eq!("foo bar baz ", strip_duplicate_spaces("foo   bar   baz "));
         }
     }
 
@@ -356,6 +359,7 @@ mod tests {
         use crate::providers::deutscher_wetterdienst::{parse_measurement_data_csv, Measurement};
         use crate::providers::units::Ratio;
         use chrono::{DateTime, Utc};
+        use pretty_assertions::assert_eq;
 
         #[test]
         fn parse_example() {
@@ -365,7 +369,7 @@ mod tests {
                     _atmospheric_pressure: "-999".into(),
                     _dew_point_temperature_200_centimeters: 2.4.into(),
                     _temperature_5_centimeters: 2.5.into(),
-                    time: DateTime::parse_from_rfc3339(&"2023-01-12T00:00:00Z")
+                    time: DateTime::parse_from_rfc3339("2023-01-12T00:00:00Z")
                         .expect("Static value")
                         .with_timezone(&Utc {}),
                     temperature_200_centimers: 5.1.into(),
@@ -373,9 +377,8 @@ mod tests {
                 }],
                 &parse_measurement_data_csv(
                     &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
-            379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor\n\
-    "
-                    .to_string(),
+            379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor"
+                        .to_string(),
                 )[..]
             );
         }

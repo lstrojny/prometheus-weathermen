@@ -8,6 +8,12 @@ use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::registry::{Registry, Unit};
 use std::sync::atomic::AtomicU64;
 
+#[derive(PartialEq, Debug, Eq, Copy, Clone)]
+pub enum Format {
+    Prometheus,
+    OpenMetrics,
+}
+
 #[derive(Clone, Hash, Eq, PartialEq, EncodeLabelSet, Debug)]
 struct Labels {
     version: String,
@@ -18,7 +24,7 @@ struct Labels {
     longitude: String,
 }
 
-pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
+pub fn format_metrics(_format: Format, weathers: Vec<Weather>) -> anyhow::Result<String> {
     debug!("Formatting {weathers:?}");
 
     let mut registry = Registry::with_prefix("weather");
@@ -91,19 +97,19 @@ pub fn format(weathers: Vec<Weather>) -> anyhow::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prometheus::format;
+    use crate::prometheus::{format_metrics, Format};
     use crate::providers::units::Ratio::Ratio;
     use crate::providers::units::{Celsius, Coordinate, Coordinates};
     use crate::providers::Weather;
-    use assert_str::assert_str_eq;
+    use pretty_assertions::assert_str_eq;
     use std::cmp::Ordering;
 
     fn sort_output_deterministically(output: &str) -> String {
         let mut lines: Vec<&str> = output.lines().collect();
 
         lines.sort_by(|left, right| {
-            let left_is_comment = left.starts_with("#");
-            let right_is_comment = right.starts_with("#");
+            let left_is_comment = left.starts_with('#');
+            let right_is_comment = right.starts_with('#');
             let left_metric_id = get_metric_identifier(left, left_is_comment);
             let right_metric_id = get_metric_identifier(right, right_is_comment);
 
@@ -112,7 +118,7 @@ mod tests {
                 return Ordering::Equal;
             }
 
-            return left.partial_cmp(right).unwrap_or(Ordering::Equal);
+            left.partial_cmp(right).unwrap_or(Ordering::Equal)
         });
 
         lines.join("\n")
@@ -120,10 +126,10 @@ mod tests {
 
     fn get_metric_identifier(line: &str, is_comment: bool) -> String {
         if is_comment {
-            line.split(" ").nth(2).unwrap_or(&"".to_string()).into()
+            line.split(' ').nth(2).unwrap_or("").into()
         } else {
-            line.split("{")
-                .nth(0)
+            line.split('{')
+                .next()
                 .expect("Could not extract identifier from metric line")
                 .into()
         }
@@ -137,26 +143,28 @@ mod tests {
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
 weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                &format(vec![Weather {
-                    source: "org.example".into(),
-                    coordinates: Coordinates {
-                        latitude: Coordinate::from(20.1),
-                        longitude: Coordinate::from(10.01234),
-                    },
-                    location: "My Name".into(),
-                    city: "Some City".into(),
-                    temperature: Celsius::from(25.5),
-                    relative_humidity: None,
-                    distance: None,
-                }])
+                &format_metrics(
+                    Format::Prometheus,
+                    vec![Weather {
+                        source: "org.example".into(),
+                        coordinates: Coordinates {
+                            latitude: Coordinate::from(20.1),
+                            longitude: Coordinate::from(10.01234),
+                        },
+                        location: "My Name".into(),
+                        city: "Some City".into(),
+                        temperature: Celsius::from(25.5),
+                        relative_humidity: None,
+                        distance: None,
+                    }]
+                )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 
     #[test]
@@ -171,26 +179,28 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # TYPE weather_relative_humidity_ratio gauge
 # UNIT weather_relative_humidity_ratio ratio
 weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                &format(vec![Weather {
-                    source: "org.example".into(),
-                    coordinates: Coordinates {
-                        latitude: Coordinate::from(20.1),
-                        longitude: Coordinate::from(10.01234),
-                    },
-                    location: "My Name".into(),
-                    city: "Some City".into(),
-                    temperature: Celsius::from(25.5),
-                    relative_humidity: Some(Ratio(0.55)),
-                    distance: None,
-                }])
+                &format_metrics(
+                    Format::Prometheus,
+                    vec![Weather {
+                        source: "org.example".into(),
+                        coordinates: Coordinates {
+                            latitude: Coordinate::from(20.1),
+                            longitude: Coordinate::from(10.01234),
+                        },
+                        location: "My Name".into(),
+                        city: "Some City".into(),
+                        temperature: Celsius::from(25.5),
+                        relative_humidity: Some(Ratio(0.55)),
+                        distance: None,
+                    }]
+                )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 
     #[test]
@@ -207,40 +217,42 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # UNIT weather_relative_humidity_ratio ratio
 weather_relative_humidity_ratio{{version="{0}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 0.75
 weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                &format(vec![
-                    Weather {
-                        source: "org.example".into(),
-                        coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1),
-                            longitude: Coordinate::from(10.01234),
+                &format_metrics(
+                    Format::Prometheus,
+                    vec![
+                        Weather {
+                            source: "org.example".into(),
+                            coordinates: Coordinates {
+                                latitude: Coordinate::from(20.1),
+                                longitude: Coordinate::from(10.01234),
+                            },
+                            location: "My Name".into(),
+                            city: "Some City".into(),
+                            temperature: Celsius::from(25.5),
+                            relative_humidity: Some(Ratio(0.55)),
+                            distance: None
                         },
-                        location: "My Name".into(),
-                        city: "Some City".into(),
-                        temperature: Celsius::from(25.5),
-                        relative_humidity: Some(Ratio(0.55)),
-                        distance: None
-                    },
-                    Weather {
-                        source: "com.example".into(),
-                        coordinates: Coordinates {
-                            latitude: Coordinate::from(30.1),
-                            longitude: Coordinate::from(20.01234),
-                        },
-                        location: "Another Name".into(),
-                        city: "Another City".into(),
-                        temperature: Celsius::from(15.5),
-                        relative_humidity: Some(Ratio(0.75)),
-                        distance: None
-                    }
-                ])
+                        Weather {
+                            source: "com.example".into(),
+                            coordinates: Coordinates {
+                                latitude: Coordinate::from(30.1),
+                                longitude: Coordinate::from(20.01234),
+                            },
+                            location: "Another Name".into(),
+                            city: "Another City".into(),
+                            temperature: Celsius::from(15.5),
+                            relative_humidity: Some(Ratio(0.75)),
+                            distance: None,
+                        }
+                    ]
+                )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
     #[test]
     fn format_temperature_and_distance() {
@@ -254,25 +266,27 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # TYPE weather_station_distance_meters gauge
 # UNIT weather_station_distance_meters meters
 weather_station_distance_meters{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 100.1
-# EOF
-"##,
+# EOF"##,
                 crate::config::VERSION
             ),
             sort_output_deterministically(
-                &format(vec![Weather {
-                    source: "org.example".into(),
-                    coordinates: Coordinates {
-                        latitude: Coordinate::from(20.1),
-                        longitude: Coordinate::from(10.01234),
-                    },
-                    location: "My Name".into(),
-                    city: "Some City".into(),
-                    temperature: Celsius::from(25.5),
-                    relative_humidity: None,
-                    distance: Some(100.1.into())
-                }])
+                &format_metrics(
+                    Format::Prometheus,
+                    vec![Weather {
+                        source: "org.example".into(),
+                        coordinates: Coordinates {
+                            latitude: Coordinate::from(20.1),
+                            longitude: Coordinate::from(10.01234),
+                        },
+                        location: "My Name".into(),
+                        city: "Some City".into(),
+                        temperature: Celsius::from(25.5),
+                        relative_humidity: None,
+                        distance: Some(100.1.into())
+                    }]
+                )
                 .expect("Formatting should work")
             )
-        )
+        );
     }
 }
