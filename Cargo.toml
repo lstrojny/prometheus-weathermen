@@ -14,7 +14,7 @@ codegen-units = 1
 strip = "symbols"
 
 [dependencies]
-rocket = { version = "0.5.0-rc.2", features = ["tls"] }
+rocket = { version = "0.5.0-rc.3", features = ["tls"] }
 reqwest = { version = "0.11.15", features = ["json", "blocking"] }
 serde = "1.0.159"
 toml = "0.7.3"
