@@ -6,6 +6,7 @@
 #![warn(clippy::cargo_common_metadata)]
 #![warn(clippy::unwrap_used)]
 #![allow(clippy::no_effect_underscore_binding)]
+#![allow(clippy::let_underscore_drop)]
 
 use crate::config::{read, DEFAULT_CONFIG};
 use crate::error::exit_if_handle_fatal;
@@ -57,7 +58,7 @@ pub async fn start_server() -> _ {
         .log_level()
         .expect("Log level cannot be not available");
 
-    logging::init(log_level).expect("Logging successfully initialied");
+    logging::init(log_level).expect("Logging successfully initialized");
 
     let config = read(args.config, log_level).unwrap_or_else(exit_if_handle_fatal);
 
