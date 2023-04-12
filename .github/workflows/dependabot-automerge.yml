@@ -11,7 +11,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3.5.0
+        uses: actions/checkout@v3.5.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
