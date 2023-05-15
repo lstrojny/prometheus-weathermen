@@ -30,7 +30,7 @@ tokio = { version = "1.27.0", default-features = false }
 clap = { version = "4.1.11", features = ["derive"] }
 clap-verbosity-flag = "2.0.1"
 figment = { version = "0.10.8", features = ["toml", "env"] }
-prometheus-client = "0.20.0"
+prometheus-client = "0.21.0"
 rocket-basicauth = "2.1.1"
 bcrypt = "0.14.0"
 openssl = { version = "0.10.51", features = ["vendored"] }
