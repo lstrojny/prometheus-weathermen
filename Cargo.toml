@@ -33,7 +33,7 @@ figment = { version = "0.10.8", features = ["toml", "env"] }
 prometheus-client = "0.21.1"
 rocket-basicauth = "2.1.1"
 bcrypt = "0.14.0"
-openssl = { version = "0.10.51", features = ["vendored"] }
+openssl = { version = "0.10.52", features = ["vendored"] }
 simple_logger = { version = "4.1.0", features = ["timestamps", "colors", "stderr"] }
 csv = "1.2.1"
 const_format = "0.2.30"
