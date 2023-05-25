@@ -24,6 +24,7 @@ pub async fn configure_rocket(config: Config) -> Rocket<Build> {
         .unwrap_or_else(exit_if_handle_fatal)
         .unwrap_or_else(exit_if_handle_fatal);
 
+    #[allow(clippy::no_effect_underscore_binding)]
     rocket::custom(config.http)
         .manage(tasks)
         .manage(config.auth)
