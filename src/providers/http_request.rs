@@ -122,18 +122,27 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
             "Trying to acquire read lock after circuit breaker {:?} was instantiated",
             cicruit_breaker_scope
         );
-        let circuit_breaker_registry_ro = CIRCUIT_BREAKER_REGISTRY
+        CIRCUIT_BREAKER_REGISTRY
             .read()
-            .expect("Lock should not be poisoned");
-        trace!(
-            "Read lock acquired after circuit breaker {:?} was instantiated",
-            cicruit_breaker_scope
-        );
-        let circuit_breaker = circuit_breaker_registry_ro
-            .get(cicruit_breaker_scope)
-            .expect("Circuit breaker must now exist");
-
-        request_url_with_circuit_breaker(cicruit_breaker_scope, circuit_breaker, request)
+            .map_err(|_| anyhow!("Circuit breaker RO lock is poisoned"))
+            .and_then(|circuit_breaker_registry_ro| {
+                trace!(
+                    "Read lock acquired after circuit breaker {:?} was instantiated",
+                    cicruit_breaker_scope
+                );
+                circuit_breaker_registry_ro
+                    .get(cicruit_breaker_scope)
+                    .map_or_else(
+                        || Err(anyhow!("Circuit breaker not found")),
+                        |circuit_breaker| {
+                            request_url_with_circuit_breaker(
+                                cicruit_breaker_scope,
+                                circuit_breaker,
+                                request,
+                            )
+                        },
+                    )
+            })
     });
 
     match value {

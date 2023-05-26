@@ -5,13 +5,13 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::cargo_common_metadata)]
 #![warn(clippy::unwrap_used)]
+#![allow(clippy::let_underscore_untyped)]
 #![allow(clippy::no_effect_underscore_binding)]
-#![allow(clippy::let_underscore_drop)]
 
 use crate::config::{read, DEFAULT_CONFIG};
 use crate::error::exit_if_handle_fatal;
 use clap::{arg, command, Parser};
-use rocket::launch;
+use rocket::{launch, Build, Rocket};
 use std::path::PathBuf;
 
 mod config;
@@ -50,7 +50,7 @@ struct Args {
 }
 
 #[launch]
-pub async fn start_server() -> _ {
+pub async fn start_server() -> Rocket<Build> {
     let args = Args::parse();
 
     let log_level = args
