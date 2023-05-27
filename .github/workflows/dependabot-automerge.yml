@@ -1,4 +1,4 @@
-name: Dependabot Automerge
+name: Dependabot auto merge
 on:
   workflow_run:
     workflows: ["Build Pipeline"]
@@ -7,17 +7,22 @@ on:
 
 jobs:
   automerge:
+    name: Auto merge "${{ github.event.workflow_run.head_branch }}"
     runs-on: ubuntu-22.04
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >
+      github.event.workflow_run.event == 'pull_request'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.actor == 'dependabot[bot]'
+        && startsWith(github.event.workflow_run.head_branch, 'dependabot/')
     steps:
       - name: Checkout source
         uses: actions/checkout@v3.5.2
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.workflow_run.head_commit.id }}
 
-      - name: Auto merge dependabot PRs
-        uses: ahmadnassri/action-dependabot-auto-merge@v2.6.6
-        with:
-          target: minor
-          github-token: ${{ secrets.PR_GITHUB_TOKEN }}
-          command: squash and merge
+      - name: Instruct @dependabot to merge
+        run: "gh issue comment $ISSUE_ID --body \"(This is an automated comment from workflow $WORKFLOW_URL)\n\n@dependabot squash and merge\""
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPENDABOT_COMMENT_TOKEN }}
+          ISSUE_ID: ${{ github.event.workflow_run.pull_requests[0].number  }}
+          WORKFLOW_URL: ${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}
