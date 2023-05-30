@@ -36,7 +36,7 @@ bcrypt = "0.14.0"
 openssl = { version = "0.10.52", features = ["vendored"] }
 simple_logger = { version = "4.1.0", features = ["timestamps", "colors", "stderr"] }
 csv = "1.2.1"
-const_format = "0.2.30"
+const_format = "0.2.31"
 geo = "0.25.0"
 chrono = { version = "0.4.25", default-features = false, features = ["serde"] }
 zip = { version = "0.6.6", default-features = false, features = ["deflate-miniz"] }
