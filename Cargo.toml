@@ -35,7 +35,7 @@ rocket-basicauth = "2.1.1"
 bcrypt = "0.14.0"
 openssl = { version = "0.10.53", features = ["vendored"] }
 simple_logger = { version = "4.1.0", features = ["timestamps", "colors", "stderr"] }
-csv = "1.2.1"
+csv = "1.2.2"
 const_format = "0.2.31"
 geo = "0.25.0"
 chrono = { version = "0.4.26", default-features = false, features = ["serde"] }
