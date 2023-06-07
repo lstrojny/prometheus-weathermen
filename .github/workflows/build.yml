@@ -185,7 +185,7 @@ jobs:
 
       - name: Generate metadata
         id: docker_metadata
-        uses: docker/metadata-action@v4.4.0
+        uses: docker/metadata-action@v4.5.0
         with:
           images: |
             lstrojny/prometheus-weathermen
