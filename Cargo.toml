@@ -17,7 +17,7 @@ strip = "symbols"
 rocket = { version = "0.5.0-rc.3", features = ["tls"] }
 reqwest = { version = "0.11.18", features = ["json", "blocking"] }
 serde = "1.0.164"
-toml = "0.7.4"
+toml = "0.7.5"
 hmac = "0.12.1"
 hex = "0.4.3"
 sha2 = "0.10.7"
