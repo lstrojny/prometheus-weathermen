@@ -581,9 +581,9 @@ dependencies = [
 
 [[package]]
 name = "dtoa"
-version = "1.0.7"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c904bbebf8a5ecde84d81e5d3e5fe085104462a4bec7888608a4b408b117fecf"
+checksum = "519b83cd10f5f6e969625a409f735182bea5558cd8b64c655806ceaae36f1999"
 
 [[package]]
 name = "earcutr"
