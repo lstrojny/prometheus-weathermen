@@ -37,7 +37,7 @@ openssl = { version = "0.10.55", features = ["vendored"] }
 simple_logger = { version = "4.2.0", features = ["timestamps", "colors", "stderr"] }
 csv = "1.2.2"
 const_format = "0.2.31"
-geo = "0.25.1"
+geo = "0.26.0"
 chrono = { version = "0.4.26", default-features = false, features = ["serde"] }
 zip = { version = "0.6.6", default-features = false, features = ["deflate-miniz"] }
 failsafe = "1.2.0"
