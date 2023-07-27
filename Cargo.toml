@@ -16,7 +16,7 @@ strip = "symbols"
 [dependencies]
 rocket = { version = "0.5.0-rc.3", features = ["tls"] }
 reqwest = { version = "0.11.18", features = ["json", "blocking"] }
-serde = "1.0.175"
+serde = "1.0.177"
 toml = "0.7.6"
 hmac = "0.12.1"
 hex = "0.4.3"
