@@ -39,7 +39,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up cargo cache
-        uses: actions/cache@v3.3.1
+        uses: actions/cache@v3.3.2
         continue-on-error: false
         with:
           path: |
@@ -119,7 +119,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up cargo cache
-        uses: actions/cache@v3.3.1
+        uses: actions/cache@v3.3.2
         continue-on-error: false
         with:
           path: |
