@@ -1295,9 +1295,9 @@ dependencies = [
 
 [[package]]
 name = "moka"
-version = "0.11.3"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa6e72583bf6830c956235bff0d5afec8cf2952f579ebad18ae7821a917d950f"
+checksum = "d8017ec3548ffe7d4cef7ac0e12b044c01164a74c0f3119420faeaf13490ad8b"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-epoch",
@@ -1306,7 +1306,6 @@ dependencies = [
  "parking_lot",
  "quanta",
  "rustc_version",
- "scheduled-thread-pool",
  "skeptic",
  "smallvec",
  "tagptr",
@@ -2067,15 +2066,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c3733bf4cf7ea0880754e19cb5a462007c4a8c1914bff372ccc95b464f1df88"
 dependencies = [
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "scheduled-thread-pool"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbc66816425a074528352f5789333ecff06ca41b36b0b0efdfbb29edc391a19"
-dependencies = [
- "parking_lot",
 ]
 
 [[package]]
