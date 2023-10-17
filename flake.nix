@@ -20,8 +20,9 @@
           packages = [
             pkgs.rust-bin.stable.latest.complete
             pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
             pkgs.openssl
-            pkgs.pkgconfig
+            pkgs.pkg-config
           ];
           shellHook = ''
             echo "Toolchain: ${pkgs.lib.getBin rust-env}/bin"
