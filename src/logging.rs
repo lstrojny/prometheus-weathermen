@@ -7,7 +7,7 @@ pub fn init(level: log::Level) -> anyhow::Result<()> {
     if systemd_journal_logger::connected_to_journal() {
         debug!("Initialize systemd journal logger with level {level:?}");
 
-        return Ok(systemd_journal_logger::JournalLog::default()
+        return Ok(systemd_journal_logger::JournalLog::new()?
             .with_extra_fields(vec![("VERSION", crate::config::VERSION)])
             .install()?);
     }

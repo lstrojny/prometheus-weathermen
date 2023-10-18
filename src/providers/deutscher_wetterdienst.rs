@@ -151,7 +151,7 @@ struct Measurement {
 }
 
 mod minute_precision_date_format {
-    use chrono::{DateTime, TimeZone, Utc};
+    use chrono::{DateTime, NaiveDateTime, Utc};
     use serde::{self, Deserialize, Deserializer};
 
     const FORMAT: &str = "%Y%m%d%H%M";
@@ -161,7 +161,8 @@ mod minute_precision_date_format {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Utc.datetime_from_str(&s, FORMAT)
+        NaiveDateTime::parse_from_str(&s, FORMAT)
+            .map(|v| v.and_utc())
             .map_err(serde::de::Error::custom)
     }
 }
