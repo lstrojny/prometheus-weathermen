@@ -172,6 +172,7 @@ fn ensure_circuit_breaker(cicruit_breaker_scope: &str) {
         let circuit_breaker = create_circuit_breaker();
 
         circuit_breaker_registry_rw.insert(cicruit_breaker_scope.to_string(), circuit_breaker);
+        drop(circuit_breaker_registry_rw);
 
         trace!("Circuit breaker {:?} instantiated", cicruit_breaker_scope);
     }
