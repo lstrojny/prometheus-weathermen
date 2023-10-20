@@ -2302,12 +2302,12 @@ dependencies = [
 
 [[package]]
 name = "systemd-journal-logger"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3bc8d9cb948f3d3a78f6f9515710015404a8760be8f23874dbad8b21ce01302"
+checksum = "fb65c37bfdf7a8ae8d1793cfed716088dee377cfafdb29cb6941e808cea958ba"
 dependencies = [
- "libc",
  "log",
+ "rustix",
 ]
 
 [[package]]
