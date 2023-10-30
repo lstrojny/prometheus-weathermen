@@ -29,7 +29,7 @@ log = { version = "0.4.20", features = ["serde"] }
 tokio = { version = "1.33.0", default-features = false }
 clap = { version = "4.4.7", features = ["derive"] }
 clap-verbosity-flag = "2.1.0"
-figment = { version = "0.10.11", features = ["toml", "env"] }
+figment = { version = "0.10.12", features = ["toml", "env"] }
 prometheus-client = "0.22.0"
 rocket-basicauth = "2.1.1"
 bcrypt = "0.15.0"
