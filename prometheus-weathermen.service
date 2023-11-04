@@ -3,7 +3,7 @@ Description=Prometheus weathermen service
 After=multi-user.target
 
 [Service]
-ExecStart=/usr/local/bin/prometheus-weathermen -vvv
+ExecStart=/usr/local/bin/prometheus-weathermen
 Restart=on-failure
 # Let systemd dynamically create a non-privileged user
 # You might need to change that to a static user if e.g. you need ACL based read permissions for TLS certificates
