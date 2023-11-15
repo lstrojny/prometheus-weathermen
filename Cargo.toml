@@ -44,7 +44,7 @@ failsafe = "1.2.0"
 once_cell = "1.18.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-systemd-journal-logger = "2.1.0"
+systemd-journal-logger = "2.1.1"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
