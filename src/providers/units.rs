@@ -1,15 +1,10 @@
+use derive_more::{From, Into};
 use rocket::serde::Serialize;
 use serde::Deserialize;
 use std::fmt::{Debug, Display, Formatter};
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone, From, PartialEq)]
 pub struct Kelvin(f32);
-
-impl From<f32> for Kelvin {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
 
 const ABSOLUTE_ZERO_IN_CELSIUS: f32 = 273.15;
 impl ToCelsius for Kelvin {
@@ -18,14 +13,8 @@ impl ToCelsius for Kelvin {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Copy, Clone, From, Into, PartialEq)]
 pub struct Celsius(f32);
-
-impl From<f32> for Celsius {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
 
 impl From<Celsius> for f64 {
     fn from(value: Celsius) -> Self {
@@ -39,17 +28,11 @@ impl ToCelsius for Celsius {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone, From, PartialEq)]
 pub struct Fahrenheit(f32);
 
 pub trait ToCelsius {
     fn to_celsius(&self) -> Celsius;
-}
-
-impl From<f32> for Fahrenheit {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
 }
 
 impl ToCelsius for Fahrenheit {
@@ -76,7 +59,7 @@ impl Ratio {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, From, Into, Debug, Clone)]
 pub struct Coordinate(f64);
 
 impl PartialEq for Coordinate {
@@ -92,18 +75,6 @@ impl Display for Coordinate {
     }
 }
 
-impl From<f64> for Coordinate {
-    fn from(value: f64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Coordinate> for f64 {
-    fn from(value: Coordinate) -> Self {
-        value.0
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coordinates {
     #[serde(alias = "lat")]
@@ -112,17 +83,5 @@ pub struct Coordinates {
     pub longitude: Coordinate,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, From, Into)]
 pub struct Meters(f64);
-
-impl From<f64> for Meters {
-    fn from(value: f64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Meters> for f64 {
-    fn from(value: Meters) -> Self {
-        value.0
-    }
-}

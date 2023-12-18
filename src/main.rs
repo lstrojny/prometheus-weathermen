@@ -15,6 +15,7 @@ use clap::{arg, command, Parser};
 use rocket::{launch, Build, Rocket};
 use std::path::PathBuf;
 
+mod bcrypt;
 mod config;
 mod error;
 mod http_server;

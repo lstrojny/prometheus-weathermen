@@ -1,15 +1,16 @@
-use crate::config;
-use config::NAME;
+use crate::config::NAME;
 use log::{debug, error, info, trace};
 use once_cell::sync::Lazy;
 use rocket::http::{Accept, ContentType, Header, MediaType, QMediaType, Status};
 use rocket::{get, routes, Build, Either, Responder, Rocket, State};
 use rocket_basicauth::BasicAuth;
 use std::cmp::Ordering;
+use std::convert::identity;
 
 use crate::config::ProviderTasks;
 use crate::config::{get_provider_tasks, Config, CredentialsStore};
 
+use crate::bcrypt::{get_cost, get_default_hash, BcryptHash};
 use crate::error::exit_if_handle_fatal;
 use crate::prometheus::{format_metrics, Format};
 use crate::providers::Weather;
@@ -24,21 +25,39 @@ pub async fn configure_rocket(config: Config) -> Rocket<Build> {
         .unwrap_or_else(exit_if_handle_fatal)
         .unwrap_or_else(exit_if_handle_fatal);
 
+    let configured_credentials = config
+        .auth
+        .map(|store| {
+            get_default_hash(get_max_costs_from_credentials_store(&store))
+                .map(|default_hash| (store, default_hash))
+        })
+        .flatten();
+
     #[allow(clippy::no_effect_underscore_binding)]
     rocket::custom(config.http)
         .manage(tasks)
-        .manage(config.auth)
+        .manage(configured_credentials)
         .mount("/", routes![index, metrics])
+}
+
+fn get_max_costs_from_credentials_store(credentials_store: &CredentialsStore) -> Option<u32> {
+    credentials_store
+        .0
+        .clone()
+        .into_iter()
+        .map(|(_username, hash)| get_cost(&hash))
+        .flat_map(identity)
+        .max()
 }
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
 fn index(
-    credentials_store: &State<Option<CredentialsStore>>,
+    credentials_configured: &State<Option<(CredentialsStore, BcryptHash)>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials_store, &credentials_presented) {
+    match maybe_authenticate(credentials_configured, &credentials_presented) {
         Ok(_) => Ok(MetricsResponse::new(
             Status::NotFound,
             get_metrics_format(accept),
@@ -51,11 +70,11 @@ fn index(
 #[get("/metrics")]
 async fn metrics(
     unscheduled_tasks: &State<ProviderTasks>,
-    credentials_store: &State<Option<CredentialsStore>>,
+    credentials_configured: &State<Option<(CredentialsStore, BcryptHash)>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials_store, &credentials_presented) {
+    match maybe_authenticate(credentials_configured, &credentials_presented) {
         Ok(_) => Ok(serve_metrics(get_metrics_format(accept), unscheduled_tasks).await),
         Err(e) => auth_error_to_response(&e),
     }
@@ -187,12 +206,12 @@ pub enum Denied {
 }
 
 pub fn maybe_authenticate(
-    credentials_store: &Option<CredentialsStore>,
+    credentials_configured: &Option<(CredentialsStore, BcryptHash)>,
     credentials_presented: &Option<BasicAuth>,
 ) -> Result<Granted, Denied> {
-    match (credentials_store, credentials_presented) {
-        (Some(credentials_store), Some(credentials_presented)) => {
-            authenticate(credentials_store, credentials_presented)
+    match (credentials_configured, credentials_presented) {
+        (Some((credentials_store, default_hash)), Some(credentials_presented)) => {
+            authenticate(credentials_store, credentials_presented, default_hash)
         }
         (Some(_), None) => {
             trace!("No credentials presented. Unauthorized");
@@ -205,7 +224,11 @@ pub fn maybe_authenticate(
     }
 }
 
-fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Granted, Denied> {
+fn authenticate(
+    credentials: &CredentialsStore,
+    auth: &BasicAuth,
+    default_hash: &BcryptHash,
+) -> Result<Granted, Denied> {
     for (username, hash) in credentials.0.clone() {
         if username != auth.username {
             continue;
@@ -227,6 +250,10 @@ fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Gran
             }
         };
     }
+
+    let default_hash_string: String = default_hash.to_string();
+    // Prevent timing attacks by running one bcrypt operation
+    let _ignored = bcrypt::verify(auth.password.as_bytes(), default_hash_string.as_str());
 
     Err(Denied::Forbidden)
 }
@@ -310,6 +337,10 @@ mod tests {
         use pretty_assertions::assert_eq;
         use rocket_basicauth::BasicAuth;
 
+        const DEFAULT_HASH: &str = ":$2y$10$iKFYnIiX5HjSbuvgevYJPOjcAx0UPKLj8X63eAnB8Y2g7a0IDWEjG";
+
+        const SECRET_HASH: &str = "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna";
+
         #[test]
         fn false_if_no_authentication_required() {
             assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None));
@@ -319,7 +350,10 @@ mod tests {
         fn unauthorized_if_no_auth_information_provided() {
             assert_eq!(
                 Err(Denied::Unauthorized),
-                maybe_authenticate(&Some(CredentialsStore::empty()), &None)
+                maybe_authenticate(
+                    &Some((CredentialsStore::empty(), DEFAULT_HASH.to_string().into())),
+                    &None
+                )
             );
         }
 
@@ -328,7 +362,7 @@ mod tests {
             assert_eq!(
                 Err(Denied::Forbidden),
                 maybe_authenticate(
-                    &Some(CredentialsStore::empty()),
+                    &Some((CredentialsStore::empty(), DEFAULT_HASH.to_string().into())),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into()
@@ -342,10 +376,10 @@ mod tests {
             assert_eq!(
                 Err(Denied::Forbidden),
                 maybe_authenticate(
-                    &Some(CredentialsStore::from([(
-                        "joanna".into(),
-                        "$2a$12$KR9glOH.QnpZ8TTZzkRFfO2GejbHoPFyBtViBgPWND764MQy735Q6".into()
-                    )])),
+                    &Some((
+                        CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        DEFAULT_HASH.to_string().into()
+                    )),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "incorrect".into()
@@ -359,10 +393,10 @@ mod tests {
             assert_eq!(
                 Ok(Granted::Succeeded),
                 maybe_authenticate(
-                    &Some(CredentialsStore::from([(
-                        "joanna".into(),
-                        "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna".into()
-                    )])),
+                    &Some((
+                        CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        DEFAULT_HASH.to_string().into()
+                    )),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into()
