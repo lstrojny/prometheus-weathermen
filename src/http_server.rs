@@ -1,5 +1,6 @@
 use crate::config::NAME;
 use log::{debug, error, info, trace};
+use moka::sync::{Cache, CacheBuilder};
 use once_cell::sync::Lazy;
 use rocket::http::{Accept, ContentType, Header, MediaType, QMediaType, Status};
 use rocket::{get, routes, Build, Either, Responder, Rocket, State};
@@ -193,13 +194,13 @@ impl ForbiddenResponse {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Granted {
     NotRequired,
     Succeeded,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Denied {
     Unauthorized,
     Forbidden,
@@ -224,6 +225,9 @@ pub fn maybe_authenticate(
     }
 }
 
+static AUTHENTICATION_CACHE: Lazy<Cache<(String, String), Result<Granted, Denied>>> =
+    Lazy::new(|| CacheBuilder::new(10u64.pow(6)).build());
+
 fn authenticate(
     credentials: &CredentialsStore,
     auth: &BasicAuth,
@@ -234,21 +238,24 @@ fn authenticate(
             continue;
         }
 
-        return match bcrypt::verify(auth.password.as_bytes(), &hash) {
-            Ok(r) => {
-                if r {
-                    debug!("Username {username:?} successfully authenticated");
-                    Ok(Granted::Succeeded)
-                } else {
-                    debug!("Invalid password for {username:?}");
+        return AUTHENTICATION_CACHE.get_with(
+            (auth.username.clone(), auth.password.clone()),
+            || match bcrypt::verify(auth.password.as_bytes(), &hash) {
+                Ok(r) => {
+                    if r {
+                        debug!("Username {username:?} successfully authenticated");
+                        Ok(Granted::Succeeded)
+                    } else {
+                        debug!("Invalid password for {username:?}");
+                        Err(Denied::Forbidden)
+                    }
+                }
+                Err(e) => {
+                    error!("Error verifying bcrypt hash for {username:?}: {e:?}");
                     Err(Denied::Forbidden)
                 }
-            }
-            Err(e) => {
-                error!("Error verifying bcrypt hash for {username:?}: {e:?}");
-                Err(Denied::Forbidden)
-            }
-        };
+            },
+        );
     }
 
     let default_hash_string: String = default_hash.to_string();
