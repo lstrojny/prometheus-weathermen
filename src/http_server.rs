@@ -234,28 +234,31 @@ fn authenticate(
             continue;
         }
 
-        return AUTHENTICATION_CACHE.get_with(
-            (auth.username.clone(), auth.password.clone()),
-            || match bcrypt::verify(auth.password.as_bytes(), &hash) {
-                Ok(r) => {
-                    if r {
-                        debug!("Username {username:?} successfully authenticated");
-                        Ok(Granted::Succeeded)
-                    } else {
-                        debug!("Invalid password for {username:?}");
+        return AUTHENTICATION_CACHE
+            .entry((auth.username.clone(), auth.password.clone()))
+            .or_insert_with_if(
+                || match bcrypt::verify(auth.password.as_bytes(), &hash) {
+                    Ok(r) => {
+                        if r {
+                            debug!("Username {username:?} successfully authenticated");
+                            Ok(Granted::Succeeded)
+                        } else {
+                            debug!("Invalid password for {username:?}");
+                            Err(Denied::Forbidden)
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error verifying bcrypt hash for {username:?}: {e:?}");
                         Err(Denied::Forbidden)
                     }
-                }
-                Err(e) => {
-                    error!("Error verifying bcrypt hash for {username:?}: {e:?}");
-                    Err(Denied::Forbidden)
-                }
-            },
-        );
+                },
+                Result::is_err,
+            )
+            .into_value();
     }
 
     let default_hash_string: String = default_hash.to_string();
-    // Prevent timing attacks by running one bcrypt operation
+    // Prevent timing attacks by making sure one bcrypt operation is run each time
     let _ignored = bcrypt::verify(auth.password.as_bytes(), default_hash_string.as_str());
 
     Err(Denied::Forbidden)
@@ -341,7 +344,6 @@ mod tests {
         use rocket_basicauth::BasicAuth;
 
         const DEFAULT_HASH: &str = ":$2y$10$iKFYnIiX5HjSbuvgevYJPOjcAx0UPKLj8X63eAnB8Y2g7a0IDWEjG";
-
         const SECRET_HASH: &str = "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna";
 
         #[test]
