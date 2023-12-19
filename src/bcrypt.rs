@@ -4,20 +4,19 @@ const DEFAULT_COST: u32 = bcrypt::DEFAULT_COST;
 use derive_more::{Display, From, Into};
 
 #[derive(Debug, Into, From, Display)]
-pub struct BcryptHash(pub String);
+pub struct Hash(pub String);
 
-pub fn get_default_hash(cost: Option<u32>) -> Option<BcryptHash> {
+pub fn get_default_hash(cost: Option<u32>) -> Option<Hash> {
     bcrypt::hash(DEFAULT_PASSWORD, cost.unwrap_or(DEFAULT_COST))
         .ok()
-        .map(|v| v.into())
+        .map(Into::into)
 }
 
-pub fn get_cost(hash: &String) -> Option<u32> {
+pub fn get_cost(hash: &str) -> Option<u32> {
     let parts: Vec<&str> = hash.split('$').collect();
     parts
         .get(2)
-        .map(|v| v.parse::<u32>().ok())
-        .flatten()
+        .and_then(|v| v.parse::<u32>().ok())
         .filter(|v| *v >= 4u32)
 }
 

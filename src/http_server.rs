@@ -6,12 +6,11 @@ use rocket::http::{Accept, ContentType, Header, MediaType, QMediaType, Status};
 use rocket::{get, routes, Build, Either, Responder, Rocket, State};
 use rocket_basicauth::BasicAuth;
 use std::cmp::Ordering;
-use std::convert::identity;
 
 use crate::config::ProviderTasks;
 use crate::config::{get_provider_tasks, Config, CredentialsStore};
 
-use crate::bcrypt::{get_cost, get_default_hash, BcryptHash};
+use crate::bcrypt::{get_cost, get_default_hash, Hash};
 use crate::error::exit_if_handle_fatal;
 use crate::prometheus::{format_metrics, Format};
 use crate::providers::Weather;
@@ -26,13 +25,10 @@ pub async fn configure_rocket(config: Config) -> Rocket<Build> {
         .unwrap_or_else(exit_if_handle_fatal)
         .unwrap_or_else(exit_if_handle_fatal);
 
-    let configured_credentials = config
-        .auth
-        .map(|store| {
-            get_default_hash(get_max_costs_from_credentials_store(&store))
-                .map(|default_hash| (store, default_hash))
-        })
-        .flatten();
+    let configured_credentials = config.auth.and_then(|store| {
+        get_default_hash(get_max_costs_from_credentials_store(&store))
+            .map(|default_hash| (store, default_hash))
+    });
 
     #[allow(clippy::no_effect_underscore_binding)]
     rocket::custom(config.http)
@@ -45,16 +41,16 @@ fn get_max_costs_from_credentials_store(credentials_store: &CredentialsStore) ->
     credentials_store
         .0
         .clone()
-        .into_iter()
-        .map(|(_username, hash)| get_cost(&hash))
-        .flat_map(identity)
+        .into_values()
+        .map(|hash| get_cost(&hash))
         .max()
+        .flatten()
 }
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
 fn index(
-    credentials_configured: &State<Option<(CredentialsStore, BcryptHash)>>,
+    credentials_configured: &State<Option<(CredentialsStore, Hash)>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
@@ -71,7 +67,7 @@ fn index(
 #[get("/metrics")]
 async fn metrics(
     unscheduled_tasks: &State<ProviderTasks>,
-    credentials_configured: &State<Option<(CredentialsStore, BcryptHash)>>,
+    credentials_configured: &State<Option<(CredentialsStore, Hash)>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
@@ -207,7 +203,7 @@ pub enum Denied {
 }
 
 pub fn maybe_authenticate(
-    credentials_configured: &Option<(CredentialsStore, BcryptHash)>,
+    credentials_configured: &Option<(CredentialsStore, Hash)>,
     credentials_presented: &Option<BasicAuth>,
 ) -> Result<Granted, Denied> {
     match (credentials_configured, credentials_presented) {
@@ -231,7 +227,7 @@ static AUTHENTICATION_CACHE: Lazy<Cache<(String, String), Result<Granted, Denied
 fn authenticate(
     credentials: &CredentialsStore,
     auth: &BasicAuth,
-    default_hash: &BcryptHash,
+    default_hash: &Hash,
 ) -> Result<Granted, Denied> {
     for (username, hash) in credentials.0.clone() {
         if username != auth.username {
