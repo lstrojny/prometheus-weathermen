@@ -28,47 +28,41 @@ mod tests {
 
         #[test]
         fn none_if_empty_string() {
-            assert_eq!(None, get_cost(&"".to_string()))
+            assert_eq!(None, get_cost(""));
         }
 
         #[test]
         fn none_if_unparseable_string() {
-            assert_eq!(None, get_cost(&"$12".to_string()))
+            assert_eq!(None, get_cost("$12"));
         }
 
         #[test]
         fn none_if_incomplete_string() {
-            assert_eq!(None, get_cost(&"$2a$".to_string()))
+            assert_eq!(None, get_cost("$2a$"));
         }
 
         #[test]
         fn cost_128() {
             assert_eq!(
                 Some(255u32),
-                get_cost(
-                    &"$2a$255$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".to_string()
-                )
-            )
+                get_cost("$2a$255$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW")
+            );
         }
 
         #[test]
         fn cost_10() {
             assert_eq!(
                 Some(10u32),
-                get_cost(
-                    &"$2a$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".to_string()
-                )
-            )
+                get_cost("$2a$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW")
+            );
         }
 
         #[test]
         fn cost_less_than_4() {
             assert_eq!(
                 None,
-                get_cost(
-                    &"$2a$3$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".to_string()
-                )
-            )
+                get_cost("$2a$3$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW")
+            );
         }
     }
 }
