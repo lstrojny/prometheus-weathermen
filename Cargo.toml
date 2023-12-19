@@ -26,7 +26,7 @@ moka = { version = "0.12.1", features = ["sync"] }
 humantime-serde = "1.1.1"
 anyhow = "1.0.75"
 log = { version = "0.4.20", features = ["serde"] }
-tokio = { version = "1.35.0", default-features = false }
+tokio = { version = "1.35.1", default-features = false }
 clap = { version = "4.4.11", features = ["derive"] }
 clap-verbosity-flag = "2.1.1"
 figment = { version = "0.10.12", features = ["toml", "env"] }
