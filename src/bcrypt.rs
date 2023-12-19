@@ -1,7 +1,8 @@
+use derive_more::{Display, From, Into};
+
 const DEFAULT_PASSWORD: &str = "fakepassword";
 const DEFAULT_COST: u32 = bcrypt::DEFAULT_COST;
-
-use derive_more::{Display, From, Into};
+const MIN_COST: u32 = 4;
 
 #[derive(Debug, Into, From, Display)]
 pub struct Hash(pub String);
@@ -17,7 +18,7 @@ pub fn get_cost(hash: &str) -> Option<u32> {
     parts
         .get(2)
         .and_then(|v| v.parse::<u32>().ok())
-        .filter(|v| *v >= 4u32)
+        .filter(|v| *v >= MIN_COST)
 }
 
 #[cfg(test)]
