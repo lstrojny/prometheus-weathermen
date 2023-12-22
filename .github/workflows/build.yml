@@ -36,6 +36,7 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
+          override: true
 
       - name: Set up cargo cache
         uses: actions/cache@v3.3.2
