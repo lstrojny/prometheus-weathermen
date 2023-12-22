@@ -55,27 +55,16 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
       - name: Check formatting
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Static analysis with clippy
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: clippy
-          args: --all ${{ matrix.toolchain == 'nightly' && '-F nightly' || '' }}
+        run: cargo clippy --all ${{ matrix.toolchain == 'nightly' && '-F nightly' || '' }}
 
       - name: Run tests
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: test
+        run: cargo test
 
       - name: Run benchmarks
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: bench
-          args: -F nightly
+        run: cargo bench  ${{ matrix.toolchain == 'nightly' && '-F nightly' || '' }}
         if: matrix.toolchain == 'nightly'
 
       - name: Check for security issues
