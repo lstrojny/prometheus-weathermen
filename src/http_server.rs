@@ -427,7 +427,7 @@ mod tests {
 
         #[cfg(feature = "nightly")]
         mod benchmark {
-            extern crate test;
+            extern crate test ;
             use crate::config::CredentialsStore;
             use crate::http_server::tests::authentication::{DEFAULT_HASH, SECRET_HASH};
             use crate::http_server::{authenticate, AUTHENTICATION_CACHE};
