@@ -49,3 +49,7 @@ systemd-journal-logger = "2.1.1"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
+
+[features]
+nightly = []
+default = []

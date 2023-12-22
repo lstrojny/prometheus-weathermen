@@ -1,5 +1,5 @@
 {
-  description = "Prometheus Weather exporter";
+  description = "prometheus-weathermen";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -14,11 +14,11 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        rust-env = pkgs.rust-bin.stable.latest.complete;
+        rust-env = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
       in {
         devShell = pkgs.mkShell {
           packages = [
-            pkgs.rust-bin.stable.latest.complete
+            rust-env
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
             pkgs.openssl

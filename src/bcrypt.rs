@@ -14,9 +14,8 @@ pub fn get_default_hash(cost: Option<u32>) -> Option<Hash> {
 }
 
 pub fn get_cost(hash: &str) -> Option<u32> {
-    let parts: Vec<&str> = hash.split('$').collect();
-    parts
-        .get(2)
+    hash.split('$')
+        .nth(2)
         .and_then(|v| v.parse::<u32>().ok())
         .filter(|v| *v >= MIN_COST)
 }

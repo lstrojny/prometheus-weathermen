@@ -3,6 +3,7 @@ use crate::providers::HttpRequestCache;
 use crate::providers::{Providers, WeatherProvider, WeatherRequest};
 use anyhow::Context;
 use const_format::concatcp;
+use derive_more::{From, IntoIterator};
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -41,19 +42,12 @@ pub struct Config {
     pub auth: Option<CredentialsStore>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CredentialsStore(pub HashMap<String, String>);
+#[derive(Serialize, Deserialize, Debug, Clone, IntoIterator, Default, From)]
+pub struct CredentialsStore(HashMap<String, String>);
 
 impl<const N: usize> From<[(String, String); N]> for CredentialsStore {
     fn from(arr: [(String, String); N]) -> Self {
         Self(HashMap::from(arr))
-    }
-}
-
-#[cfg(test)]
-impl CredentialsStore {
-    pub fn empty() -> Self {
-        Self(HashMap::new())
     }
 }
 

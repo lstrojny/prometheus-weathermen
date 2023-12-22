@@ -39,10 +39,9 @@ pub async fn configure_rocket(config: Config) -> Rocket<Build> {
 
 fn get_max_costs_from_credentials_store(credentials_store: &CredentialsStore) -> Option<u32> {
     credentials_store
-        .0
         .clone()
-        .into_values()
-        .map(|hash| get_cost(&hash))
+        .into_iter()
+        .map(|(_, hash)| get_cost(&hash))
         .max()
         .flatten()
 }
@@ -143,15 +142,14 @@ pub struct MetricsResponse {
 
 impl MetricsResponse {
     fn new(status: Status, content_type: Format, response: String) -> Self {
+        let content_type = if status.class().is_success() && content_type == Format::OpenMetrics {
+            get_openmetrics_content_type()
+        } else {
+            get_text_plain_content_type()
+        };
+
         Self {
-            content_type: status
-                .class()
-                .is_success()
-                .then(|| content_type == Format::OpenMetrics)
-                .filter(|&v| v)
-                .map_or_else(get_text_plain_content_type, |_| {
-                    get_openmetrics_content_type()
-                }),
+            content_type,
             response: (status, response),
         }
     }
@@ -229,7 +227,7 @@ fn authenticate(
     auth: &BasicAuth,
     default_hash: &Hash,
 ) -> Result<Granted, Denied> {
-    for (username, hash) in credentials.0.clone() {
+    for (username, hash) in credentials.clone() {
         if username != auth.username {
             continue;
         }
@@ -343,8 +341,8 @@ mod tests {
         use pretty_assertions::assert_eq;
         use rocket_basicauth::BasicAuth;
 
-        const DEFAULT_HASH: &str = ":$2y$10$iKFYnIiX5HjSbuvgevYJPOjcAx0UPKLj8X63eAnB8Y2g7a0IDWEjG";
-        const SECRET_HASH: &str = "$2a$04$58bTU55Vh8w9N5NX/DCCT.FY7ugMX06E1fFK.vtVVxOUdJYrAUlna";
+        const DEFAULT_HASH: &str = "$2y$04$/iGPpt/.lDZV7ezOrIpV5ubAd5DF9d.6TCh/ClYqZ/JXXqcCISEfW";
+        const SECRET_HASH: &str = "$2y$04$RLR0zzNVe3K8eJg/NaRUxuWvIEXys0BwG0SnopFZ0K12Xei7HGq2i";
 
         #[test]
         fn false_if_no_authentication_required() {
@@ -356,7 +354,7 @@ mod tests {
             assert_eq!(
                 Err(Denied::Unauthorized),
                 maybe_authenticate(
-                    &Some((CredentialsStore::empty(), DEFAULT_HASH.to_string().into())),
+                    &Some((CredentialsStore::default(), DEFAULT_HASH.to_string().into())),
                     &None
                 )
             );
@@ -367,7 +365,7 @@ mod tests {
             assert_eq!(
                 Err(Denied::Forbidden),
                 maybe_authenticate(
-                    &Some((CredentialsStore::empty(), DEFAULT_HASH.to_string().into())),
+                    &Some((CredentialsStore::default(), DEFAULT_HASH.to_string().into())),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into()
@@ -394,6 +392,23 @@ mod tests {
         }
 
         #[test]
+        fn forbidden_even_if_fakepassword() {
+            assert_eq!(
+                Err(Denied::Forbidden),
+                maybe_authenticate(
+                    &Some((
+                        CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        DEFAULT_HASH.to_string().into()
+                    )),
+                    &Some(BasicAuth {
+                        username: "joanna".into(),
+                        password: "fakepassword".into()
+                    })
+                )
+            );
+        }
+
+        #[test]
         fn granted_if_authentication_successful() {
             assert_eq!(
                 Ok(Granted::Succeeded),
@@ -404,10 +419,63 @@ mod tests {
                     )),
                     &Some(BasicAuth {
                         username: "joanna".into(),
-                        password: "secret".into()
-                    })
+                        password: "secret".into(),
+                    }),
                 )
             );
+        }
+
+        #[cfg(feature = "nightly")]
+        mod benchmark {
+            extern crate test;
+            use crate::config::CredentialsStore;
+            use crate::http_server::tests::authentication::{DEFAULT_HASH, SECRET_HASH};
+            use crate::http_server::{authenticate, AUTHENTICATION_CACHE};
+            use rocket_basicauth::BasicAuth;
+            use test::Bencher;
+
+            #[bench]
+            fn bench_user_not_found(b: &mut Bencher) {
+                b.iter(|| {
+                    authenticate(
+                        &CredentialsStore::default(),
+                        &BasicAuth {
+                            username: "joanna".into(),
+                            password: "secret".into(),
+                        },
+                        &DEFAULT_HASH.to_string().into(),
+                    )
+                });
+            }
+
+            #[bench]
+            fn bench_invalid_password(b: &mut Bencher) {
+                b.iter(|| {
+                    authenticate(
+                        &CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        &BasicAuth {
+                            username: "joanna".into(),
+                            password: "incorrect".into(),
+                        },
+                        &DEFAULT_HASH.to_string().into(),
+                    )
+                })
+            }
+
+            #[bench]
+            fn bench_granted(b: &mut Bencher) {
+                b.iter(|| {
+                    AUTHENTICATION_CACHE.invalidate_all();
+                    authenticate(
+                        &CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        &BasicAuth {
+                            username: "joanna".into(),
+                            password: "secret".into(),
+                        },
+                        &DEFAULT_HASH.to_string().into(),
+                    )
+                })
+            }
         }
     }
 
@@ -508,16 +576,16 @@ mod tests {
                     &QMediaType(
                         MediaType::new("text", "plain")
                             .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                     &QMediaType(
                         MediaType::new("application", "json")
                             .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                     &QMediaType(
                         MediaType::new("text", "plain").with_params(vec![("charset", "utf8")]),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                     &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                 ],
@@ -525,17 +593,17 @@ mod tests {
                     QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                     QMediaType(
                         MediaType::new("text", "plain").with_params(vec![("charset", "utf8")]),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                     QMediaType(
                         MediaType::new("text", "plain")
                             .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                     QMediaType(
                         MediaType::new("application", "json")
                             .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                 ]))
             );
@@ -548,7 +616,7 @@ mod tests {
                     "application/openmetrics-text; version=1.0.0",
                     "application/openmetrics-text; version=0.0.1; q=0.75",
                     "text/plain; version=0.0.4; q=0.5",
-                    "*/*; q=0.1"
+                    "*/*; q=0.1",
                 ],
                 sort_media_types_by_priority(
                     &Accept::from_str(PROMETHEUS_SCRAPER_ACCEPT_HEADER)
@@ -568,7 +636,7 @@ mod tests {
                     "text/plain; q=0.95; version=0.0.4",
                     "application/openmetrics-text; q=0.9; version=1.0.0",
                     "application/openmetrics-text; q=0.8; version=0.0.1",
-                    "*/*; q=0.1"
+                    "*/*; q=0.1",
                 ],
                 sort_media_types_by_priority(
                     &Accept::from_str("application/openmetrics-text;q=0.9;version=1.0.0,application/openmetrics-text;q=0.8;version=0.0.1,text/plain;q=0.95;version=0.0.4,text/plain;q=1.0;charset=utf-8;version=0.0.4,*/*;q=0.1")
@@ -591,7 +659,7 @@ mod tests {
                 Format::OpenMetrics,
                 get_metrics_format(&Accept::new(vec![MediaType::new(
                     "application",
-                    "openmetrics-text"
+                    "openmetrics-text",
                 )
                 .into()]))
             );
@@ -627,7 +695,7 @@ mod tests {
                     QMediaType(MediaType::new("application", "*"), Some(0.9)),
                     QMediaType(
                         MediaType::new("text", "plain").with_params(("charset", "utf-8")),
-                        Some(0.9)
+                        Some(0.9),
                     ),
                 ]))
             );

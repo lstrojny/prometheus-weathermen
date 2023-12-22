@@ -70,7 +70,7 @@ pub fn format_metrics(_format: Format, weathers: Vec<Weather>) -> anyhow::Result
 
             humidity
                 .get_or_create(&labels)
-                .set(relative_humidity_ratio.as_f64())
+                .set(relative_humidity_ratio.into())
         });
 
         weather.distance.map(|meters| {
@@ -98,7 +98,7 @@ pub fn format_metrics(_format: Format, weathers: Vec<Weather>) -> anyhow::Result
 #[cfg(test)]
 mod tests {
     use crate::prometheus::{format_metrics, Format};
-    use crate::providers::units::Ratio::Ratio;
+    use crate::providers::units::Ratio::Fraction;
     use crate::providers::units::{Celsius, Coordinate, Coordinates};
     use crate::providers::Weather;
     use pretty_assertions::assert_str_eq;
@@ -194,7 +194,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                         location: "My Name".into(),
                         city: "Some City".into(),
                         temperature: Celsius::from(25.5),
-                        relative_humidity: Some(Ratio(0.55)),
+                        relative_humidity: Some(Fraction(0.55)),
                         distance: None,
                     }]
                 )
@@ -233,7 +233,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                             location: "My Name".into(),
                             city: "Some City".into(),
                             temperature: Celsius::from(25.5),
-                            relative_humidity: Some(Ratio(0.55)),
+                            relative_humidity: Some(Fraction(0.55)),
                             distance: None
                         },
                         Weather {
@@ -245,7 +245,7 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                             location: "Another Name".into(),
                             city: "Another City".into(),
                             temperature: Celsius::from(15.5),
-                            relative_humidity: Some(Ratio(0.75)),
+                            relative_humidity: Some(Fraction(0.75)),
                             distance: None,
                         }
                     ]

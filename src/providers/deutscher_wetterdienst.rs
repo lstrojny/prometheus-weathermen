@@ -374,7 +374,7 @@ mod tests {
                         .expect("Static value")
                         .with_timezone(&Utc {}),
                     temperature_200_centimers: 5.1.into(),
-                    relative_humidity_200_centimeters: Ratio::PercentageDecimal(82.6),
+                    relative_humidity_200_centimeters: Ratio::Percentage(82.6),
                 }],
                 &parse_measurement_data_csv(
                     &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\

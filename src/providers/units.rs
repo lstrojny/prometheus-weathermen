@@ -1,7 +1,7 @@
-use derive_more::{From, Into};
+use derive_more::{Display, From, Into};
 use rocket::serde::Serialize;
 use serde::Deserialize;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 
 #[derive(Deserialize, Debug, Copy, Clone, From, PartialEq)]
 pub struct Kelvin(f32);
@@ -14,13 +14,8 @@ impl ToCelsius for Kelvin {
 }
 
 #[derive(Deserialize, Debug, Copy, Clone, From, Into, PartialEq)]
+#[into(types(f64))]
 pub struct Celsius(f32);
-
-impl From<Celsius> for f64 {
-    fn from(value: Celsius) -> Self {
-        Self::from(value.0)
-    }
-}
 
 impl ToCelsius for Celsius {
     fn to_celsius(&self) -> Self {
@@ -44,34 +39,26 @@ impl ToCelsius for Fahrenheit {
 #[derive(Deserialize, Debug, Copy, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Ratio {
-    Percentage(u16),
-    PercentageDecimal(f64),
-    Ratio(f64),
+    Percentage(f64),
+    Fraction(f64),
 }
 
-impl Ratio {
-    pub fn as_f64(&self) -> f64 {
-        match self {
-            Self::Ratio(v) => *v,
-            Self::Percentage(v) => f64::from(*v) / 100.0,
-            Self::PercentageDecimal(v) => v / 100.0,
+impl From<Ratio> for f64 {
+    fn from(value: Ratio) -> Self {
+        match value {
+            Ratio::Fraction(v) => v,
+            Ratio::Percentage(v) => v / 100.0,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, From, Into, Debug, Clone)]
+#[derive(Serialize, Deserialize, From, Into, Debug, Clone, Display)]
+#[display(fmt = "{_0:.7}")]
 pub struct Coordinate(f64);
 
 impl PartialEq for Coordinate {
     fn eq(&self, other: &Self) -> bool {
         (self.0 - other.0).abs() < 0.000_000_1
-    }
-}
-
-impl Display for Coordinate {
-    // Standardize 7 digits for coordinates and that should be plenty
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.7}", self.0)
     }
 }
 
