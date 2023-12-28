@@ -278,15 +278,18 @@ mod tests {
 
         #[test]
         fn parse_short_list() {
-            assert_eq!(vec![WeatherStation {
-                station_id: "00044".into(),
-                name: "Großenkneten".into(),
-                latitude: 52.9336.into(),
-                longitude: 8.2370.into(),
-            }], parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+            assert_eq!(
+                parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
 00044 20070209 20230111             44     52.9336    8.2370 Großenkneten                             Niedersachsen                                                                                     \n\
-"));
+"),
+                vec![WeatherStation {
+                    station_id: "00044".into(),
+                    name: "Großenkneten".into(),
+                    latitude: 52.9336.into(),
+                    longitude: 8.2370.into(),
+                }]
+            );
         }
     }
 
@@ -300,12 +303,6 @@ mod tests {
         #[test]
         fn find_closest_station_to_a_coordinate() {
             assert_eq!(
-                &WeatherStation {
-                    station_id: "03379".into(),
-                    name: "München-Stadt".into(),
-                    latitude: 48.1632.into(),
-                    longitude: 11.5429.into(),
-                },
                 find_closest_weather_station(
                     &Coordinates {
                         latitude: 48.11591.into(),
@@ -326,7 +323,13 @@ mod tests {
                         },
                     ]
                 )
-                .expect("Should find something")
+                .expect("Should find something"),
+                &WeatherStation {
+                    station_id: "03379".into(),
+                    name: "München-Stadt".into(),
+                    latitude: 48.1632.into(),
+                    longitude: 11.5429.into(),
+                }
             );
         }
     }
@@ -337,22 +340,22 @@ mod tests {
 
         #[test]
         fn not_stripped_if_not_needed() {
-            assert_str_eq!("foo bar", strip_duplicate_spaces("foo bar"));
+            assert_str_eq!(strip_duplicate_spaces("foo bar"), "foo bar");
         }
 
         #[test]
         fn strips_two_spaces() {
-            assert_str_eq!("foo bar", strip_duplicate_spaces("foo  bar"));
+            assert_str_eq!(strip_duplicate_spaces("foo  bar"), "foo bar");
         }
 
         #[test]
         fn strips_more_than_two_spaces() {
-            assert_str_eq!("foo bar", strip_duplicate_spaces("foo   bar"));
+            assert_str_eq!(strip_duplicate_spaces("foo   bar"), "foo bar");
         }
 
         #[test]
         fn strips_multiple_occurrences() {
-            assert_str_eq!("foo bar baz ", strip_duplicate_spaces("foo   bar   baz "));
+            assert_str_eq!(strip_duplicate_spaces("foo   bar   baz "), "foo bar baz ");
         }
     }
 
@@ -365,6 +368,11 @@ mod tests {
         #[test]
         fn parse_example() {
             assert_eq!(
+                &parse_measurement_data_csv(
+                    &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
+            379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor"
+                        .to_string(),
+                )[..],
                 &[Measurement {
                     _station_id: "379".into(),
                     _atmospheric_pressure: "-999".into(),
@@ -375,12 +383,7 @@ mod tests {
                         .with_timezone(&Utc {}),
                     temperature_200_centimers: 5.1.into(),
                     relative_humidity_200_centimeters: Ratio::Percentage(82.6),
-                }],
-                &parse_measurement_data_csv(
-                    &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
-            379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor"
-                        .to_string(),
-                )[..]
+                }]
             );
         }
     }

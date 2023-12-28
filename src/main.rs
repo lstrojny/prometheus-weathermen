@@ -5,7 +5,6 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::cargo_common_metadata)]
 #![warn(clippy::unwrap_used)]
-#![allow(clippy::let_underscore_untyped)]
 #![allow(clippy::no_effect_underscore_binding)]
 #![allow(clippy::ignored_unit_patterns)]
 #![allow(soft_unstable)]
@@ -17,7 +16,6 @@ use clap::{arg, command, Parser};
 use rocket::{launch, Build, Rocket};
 use std::path::PathBuf;
 
-mod bcrypt;
 mod config;
 mod error;
 mod http_server;

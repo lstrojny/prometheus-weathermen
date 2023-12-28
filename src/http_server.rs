@@ -10,7 +10,6 @@ use std::cmp::Ordering;
 use crate::config::ProviderTasks;
 use crate::config::{get_provider_tasks, Config, CredentialsStore};
 
-use crate::bcrypt::{get_cost, get_default_hash, Hash};
 use crate::error::exit_if_handle_fatal;
 use crate::prometheus::{format_metrics, Format};
 use crate::providers::Weather;
@@ -25,35 +24,21 @@ pub async fn configure_rocket(config: Config) -> Rocket<Build> {
         .unwrap_or_else(exit_if_handle_fatal)
         .unwrap_or_else(exit_if_handle_fatal);
 
-    let configured_credentials = config.auth.and_then(|store| {
-        get_default_hash(get_max_costs_from_credentials_store(&store))
-            .map(|default_hash| (store, default_hash))
-    });
-
     #[allow(clippy::no_effect_underscore_binding)]
     rocket::custom(config.http)
         .manage(tasks)
-        .manage(configured_credentials)
+        .manage(config.auth)
         .mount("/", routes![index, metrics])
-}
-
-fn get_max_costs_from_credentials_store(credentials_store: &CredentialsStore) -> Option<u32> {
-    credentials_store
-        .clone()
-        .into_iter()
-        .map(|(_, hash)| get_cost(&hash))
-        .max()
-        .flatten()
 }
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
 fn index(
-    credentials_configured: &State<Option<(CredentialsStore, Hash)>>,
+    credentials_store: &State<Option<CredentialsStore>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials_configured, &credentials_presented) {
+    match maybe_authenticate(credentials_store, &credentials_presented) {
         Ok(_) => Ok(MetricsResponse::new(
             Status::NotFound,
             get_metrics_format(accept),
@@ -66,11 +51,11 @@ fn index(
 #[get("/metrics")]
 async fn metrics(
     unscheduled_tasks: &State<ProviderTasks>,
-    credentials_configured: &State<Option<(CredentialsStore, Hash)>>,
+    credentials_store: &State<Option<CredentialsStore>>,
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials_configured, &credentials_presented) {
+    match maybe_authenticate(credentials_store, &credentials_presented) {
         Ok(_) => Ok(serve_metrics(get_metrics_format(accept), unscheduled_tasks).await),
         Err(e) => auth_error_to_response(&e),
     }
@@ -201,12 +186,12 @@ pub enum Denied {
 }
 
 pub fn maybe_authenticate(
-    credentials_configured: &Option<(CredentialsStore, Hash)>,
+    credentials_store: &Option<CredentialsStore>,
     credentials_presented: &Option<BasicAuth>,
 ) -> Result<Granted, Denied> {
-    match (credentials_configured, credentials_presented) {
-        (Some((credentials_store, default_hash)), Some(credentials_presented)) => {
-            authenticate(credentials_store, credentials_presented, default_hash)
+    match (credentials_store, credentials_presented) {
+        (Some(credentials_store), Some(credentials_presented)) => {
+            authenticate(credentials_store, credentials_presented)
         }
         (Some(_), None) => {
             trace!("No credentials presented. Unauthorized");
@@ -222,44 +207,43 @@ pub fn maybe_authenticate(
 static AUTHENTICATION_CACHE: Lazy<Cache<(String, String), Result<Granted, Denied>>> =
     Lazy::new(|| CacheBuilder::new(10u64.pow(6)).build());
 
-fn authenticate(
-    credentials: &CredentialsStore,
-    auth: &BasicAuth,
-    default_hash: &Hash,
-) -> Result<Granted, Denied> {
-    for (username, hash) in credentials.clone() {
-        if username != auth.username {
-            continue;
-        }
-
-        return AUTHENTICATION_CACHE
-            .entry((auth.username.clone(), auth.password.clone()))
-            .or_insert_with_if(
-                || match bcrypt::verify(auth.password.as_bytes(), &hash) {
-                    Ok(r) => {
-                        if r {
-                            debug!("Username {username:?} successfully authenticated");
-                            Ok(Granted::Succeeded)
-                        } else {
-                            debug!("Invalid password for {username:?}");
-                            Err(Denied::Forbidden)
-                        }
-                    }
-                    Err(e) => {
-                        error!("Error verifying bcrypt hash for {username:?}: {e:?}");
-                        Err(Denied::Forbidden)
-                    }
-                },
-                Result::is_err,
-            )
-            .into_value();
-    }
-
-    let default_hash_string: String = default_hash.to_string();
-    // Prevent timing attacks by making sure one bcrypt operation is run each time
-    let _ignored = bcrypt::verify(auth.password.as_bytes(), default_hash_string.as_str());
-
-    Err(Denied::Forbidden)
+fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Granted, Denied> {
+    credentials
+        .iter()
+        .find_map(|(username, hash)| {
+            (username == &auth.username).then(|| {
+                AUTHENTICATION_CACHE
+                    .entry((auth.username.clone(), auth.password.clone()))
+                    .or_insert_with_if(
+                        || match bcrypt::verify(auth.password.as_bytes(), &hash.to_string()) {
+                            Ok(r) => {
+                                if r {
+                                    debug!("Username {username:?} successfully authenticated");
+                                    Ok(Granted::Succeeded)
+                                } else {
+                                    debug!("Invalid password for {username:?}");
+                                    Err(Denied::Forbidden)
+                                }
+                            }
+                            Err(e) => {
+                                error!("Error verifying bcrypt hash for {username:?}: {e:?}");
+                                Err(Denied::Forbidden)
+                            }
+                        },
+                        Result::is_err,
+                    )
+                    .into_value()
+            })
+        })
+        .unwrap_or_else(|| {
+            // Prevent timing attacks that could leak that a user does not exist.
+            // If the user was not found above, make sure to run at least one bcrypt operation to keep the time constant.
+            let _prevent_leak = bcrypt::verify(
+                auth.password.as_bytes(),
+                credentials.default_hash().to_string().as_str(),
+            );
+            Err(Denied::Forbidden)
+        })
 }
 
 fn sort_media_types_by_priority(accept: &Accept) -> Vec<&QMediaType> {
@@ -341,87 +325,83 @@ mod tests {
         use pretty_assertions::assert_eq;
         use rocket_basicauth::BasicAuth;
 
-        const DEFAULT_HASH: &str = "$2y$04$/iGPpt/.lDZV7ezOrIpV5ubAd5DF9d.6TCh/ClYqZ/JXXqcCISEfW";
         const SECRET_HASH: &str = "$2y$04$RLR0zzNVe3K8eJg/NaRUxuWvIEXys0BwG0SnopFZ0K12Xei7HGq2i";
 
         #[test]
         fn false_if_no_authentication_required() {
-            assert_eq!(Ok(Granted::NotRequired), maybe_authenticate(&None, &None));
+            assert_eq!(maybe_authenticate(&None, &None), Ok(Granted::NotRequired));
         }
 
         #[test]
         fn unauthorized_if_no_auth_information_provided() {
             assert_eq!(
-                Err(Denied::Unauthorized),
-                maybe_authenticate(
-                    &Some((CredentialsStore::default(), DEFAULT_HASH.to_string().into())),
-                    &None
-                )
+                maybe_authenticate(&Some(CredentialsStore::default()), &None),
+                Err(Denied::Unauthorized)
             );
         }
 
         #[test]
         fn forbidden_if_username_not_found() {
             assert_eq!(
-                Err(Denied::Forbidden),
                 maybe_authenticate(
-                    &Some((CredentialsStore::default(), DEFAULT_HASH.to_string().into())),
+                    &Some(CredentialsStore::default()),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into()
                     })
-                )
+                ),
+                Err(Denied::Forbidden)
             );
         }
 
         #[test]
         fn forbidden_if_incorrect_password() {
             assert_eq!(
-                Err(Denied::Forbidden),
                 maybe_authenticate(
-                    &Some((
-                        CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
-                        DEFAULT_HASH.to_string().into()
-                    )),
+                    &Some(CredentialsStore::from([(
+                        "joanna".into(),
+                        SECRET_HASH.to_string().into()
+                    )])),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "incorrect".into()
                     })
-                )
+                ),
+                Err(Denied::Forbidden)
             );
         }
 
         #[test]
         fn forbidden_even_if_fakepassword() {
             assert_eq!(
-                Err(Denied::Forbidden),
                 maybe_authenticate(
-                    &Some((
-                        CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
-                        DEFAULT_HASH.to_string().into()
-                    )),
+                    &Some(CredentialsStore::from([(
+                        "joanna".to_string().into(),
+                        SECRET_HASH.to_string().into()
+                    )])),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "fakepassword".into()
                     })
-                )
+                ),
+                Err(Denied::Forbidden)
             );
         }
 
         #[test]
         fn granted_if_authentication_successful() {
             assert_eq!(
-                Ok(Granted::Succeeded),
                 maybe_authenticate(
-                    &Some((
-                        CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
-                        DEFAULT_HASH.to_string().into()
-                    )),
+                    &Some(CredentialsStore::from([(
+                        "joanna".to_string().into(),
+                        SECRET_HASH.to_string().into()
+                    )])),
                     &Some(BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into(),
                     }),
-                )
+                ),
+                Ok(Granted::Succeeded)
             );
         }
 
@@ -429,50 +409,64 @@ mod tests {
         mod benchmark {
             extern crate test;
             use crate::config::CredentialsStore;
-            use crate::http_server::tests::authentication::{DEFAULT_HASH, SECRET_HASH};
+            use crate::http_server::tests::authentication::SECRET_HASH;
             use crate::http_server::{authenticate, AUTHENTICATION_CACHE};
             use rocket_basicauth::BasicAuth;
             use test::Bencher;
 
+            fn credentials_store() -> CredentialsStore {
+                CredentialsStore::from([("joanna".into(), SECRET_HASH.to_string().into())])
+            }
+
+            fn setup_benchmark_run() {
+                credentials_store().default_hash();
+            }
+
+            fn setup_benchmark_iteration() {
+                AUTHENTICATION_CACHE.invalidate_all();
+            }
+
             #[bench]
             fn bench_user_not_found(b: &mut Bencher) {
+                setup_benchmark_run();
                 b.iter(|| {
+                    setup_benchmark_iteration();
                     authenticate(
-                        &CredentialsStore::default(),
+                        &credentials_store(),
                         &BasicAuth {
-                            username: "joanna".into(),
+                            username: "unknown".into(),
                             password: "secret".into(),
                         },
-                        &DEFAULT_HASH.to_string().into(),
                     )
                 });
             }
 
             #[bench]
             fn bench_invalid_password(b: &mut Bencher) {
+                setup_benchmark_run();
                 b.iter(|| {
+                    setup_benchmark_iteration();
                     authenticate(
-                        &CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        &credentials_store(),
                         &BasicAuth {
                             username: "joanna".into(),
                             password: "incorrect".into(),
                         },
-                        &DEFAULT_HASH.to_string().into(),
                     )
                 })
             }
 
             #[bench]
             fn bench_granted(b: &mut Bencher) {
+                setup_benchmark_run();
                 b.iter(|| {
-                    AUTHENTICATION_CACHE.invalidate_all();
+                    setup_benchmark_iteration();
                     authenticate(
-                        &CredentialsStore::from([("joanna".into(), SECRET_HASH.into())]),
+                        &credentials_store(),
                         &BasicAuth {
                             username: "joanna".into(),
                             password: "secret".into(),
                         },
-                        &DEFAULT_HASH.to_string().into(),
                     )
                 })
             }
@@ -499,96 +493,79 @@ mod tests {
         #[test]
         fn sort_prefer_media_type_without_priority() {
             assert_eq!(
-                vec![
-                    &QMediaType(MediaType::new("text", "html"), None),
-                    &QMediaType(MediaType::new("application", "json"), None),
-                    &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
-                    &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
-                ],
                 sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     QMediaType(MediaType::new("text", "html"), None),
                     QMediaType(MediaType::new("application", "json"), None),
                     QMediaType(MediaType::new("text", "plain"), Some(0.9)),
-                ]))
+                ])),
+                vec![
+                    &QMediaType(MediaType::new("text", "html"), None),
+                    &QMediaType(MediaType::new("application", "json"), None),
+                    &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
+                    &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
+                ]
             );
 
             assert_eq!(
-                vec![
-                    &QMediaType(MediaType::new("text", "plain"), None),
-                    &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
-                    &QMediaType(MediaType::new("application", "json"), Some(0.1)),
-                ],
                 sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("text", "plain"), None),
                     QMediaType(MediaType::new("application", "json"), Some(0.1)),
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
-                ]))
+                ])),
+                vec![
+                    &QMediaType(MediaType::new("text", "plain"), None),
+                    &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
+                    &QMediaType(MediaType::new("application", "json"), Some(0.1)),
+                ]
             );
         }
 
         #[test]
         fn sort_prefer_media_type_without_priority_from_string() {
             assert_eq!(
-                vec!["text/plain", "application/openmetrics-text; q=0.9"],
                 sort_media_types_by_priority(
                     &Accept::from_str("text/plain, application/openmetrics-text;q=0.9")
                         .expect("Accept header value should parse")
                 )
                 .iter()
                 .map(|v| v.to_string())
-                .collect::<Vec<String>>()
+                .collect::<Vec<String>>(),
+                vec!["text/plain", "application/openmetrics-text; q=0.9"]
             );
         }
 
         #[test]
         fn sort_by_priority() {
             assert_eq!(
-                vec![
-                    &QMediaType(MediaType::new("text", "plain"), Some(1.0)),
-                    &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
-                ],
                 sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     QMediaType(MediaType::new("text", "plain"), Some(1.0)),
-                ]))
+                ])),
+                vec![
+                    &QMediaType(MediaType::new("text", "plain"), Some(1.0)),
+                    &QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
+                ]
             );
         }
 
         #[test]
         fn sort_by_specificity() {
             assert_eq!(
-                vec![
-                    &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
-                    &QMediaType(MediaType::new("application", "*"), Some(0.9)),
-                ],
                 sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "*"), Some(0.9)),
                     QMediaType(MediaType::new("text", "plain"), Some(0.9)),
-                ]))
+                ])),
+                vec![
+                    &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
+                    &QMediaType(MediaType::new("application", "*"), Some(0.9)),
+                ]
             );
         }
 
         #[test]
         fn sort_by_count_of_elements() {
             assert_eq!(
-                vec![
-                    &QMediaType(
-                        MediaType::new("text", "plain")
-                            .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
-                        Some(0.9),
-                    ),
-                    &QMediaType(
-                        MediaType::new("application", "json")
-                            .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
-                        Some(0.9),
-                    ),
-                    &QMediaType(
-                        MediaType::new("text", "plain").with_params(vec![("charset", "utf8")]),
-                        Some(0.9),
-                    ),
-                    &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
-                ],
                 sort_media_types_by_priority(&Accept::new(vec![
                     QMediaType(MediaType::new("text", "plain"), Some(0.9)),
                     QMediaType(
@@ -605,163 +582,180 @@ mod tests {
                             .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
                         Some(0.9),
                     ),
-                ]))
+                ])),
+                vec![
+                    &QMediaType(
+                        MediaType::new("text", "plain")
+                            .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
+                        Some(0.9),
+                    ),
+                    &QMediaType(
+                        MediaType::new("application", "json")
+                            .with_params(vec![("charset", "utf8"), ("version", "0.1")]),
+                        Some(0.9),
+                    ),
+                    &QMediaType(
+                        MediaType::new("text", "plain").with_params(vec![("charset", "utf8")]),
+                        Some(0.9),
+                    ),
+                    &QMediaType(MediaType::new("text", "plain"), Some(0.9)),
+                ]
             );
         }
 
         #[test]
         fn sort_prometheus_header() {
             assert_eq!(
-                vec![
-                    "application/openmetrics-text; version=1.0.0",
-                    "application/openmetrics-text; version=0.0.1; q=0.75",
-                    "text/plain; version=0.0.4; q=0.5",
-                    "*/*; q=0.1",
-                ],
                 sort_media_types_by_priority(
                     &Accept::from_str(PROMETHEUS_SCRAPER_ACCEPT_HEADER)
                         .expect("Accept header value should parse")
                 )
                 .iter()
                 .map(|v| v.to_string())
-                .collect::<Vec<String>>()
+                .collect::<Vec<String>>(),
+                vec![
+                    "application/openmetrics-text; version=1.0.0",
+                    "application/openmetrics-text; version=0.0.1; q=0.75",
+                    "text/plain; version=0.0.4; q=0.5",
+                    "*/*; q=0.1",
+                ]
             );
         }
 
         #[test]
         fn sort_complicated_sorting() {
             assert_eq!(
-                vec![
-                    "text/plain; q=1.0; charset=utf-8; version=0.0.4",
-                    "text/plain; q=0.95; version=0.0.4",
-                    "application/openmetrics-text; q=0.9; version=1.0.0",
-                    "application/openmetrics-text; q=0.8; version=0.0.1",
-                    "*/*; q=0.1",
-                ],
                 sort_media_types_by_priority(
                     &Accept::from_str("application/openmetrics-text;q=0.9;version=1.0.0,application/openmetrics-text;q=0.8;version=0.0.1,text/plain;q=0.95;version=0.0.4,text/plain;q=1.0;charset=utf-8;version=0.0.4,*/*;q=0.1")
                         .expect("Must parse")
                 )
                     .iter()
                     .map(|v| v.to_string())
-                    .collect::<Vec<String>>()
+                    .collect::<Vec<String>>(),
+                vec![
+                    "text/plain; q=1.0; charset=utf-8; version=0.0.4",
+                    "text/plain; q=0.95; version=0.0.4",
+                    "application/openmetrics-text; q=0.9; version=1.0.0",
+                    "application/openmetrics-text; q=0.8; version=0.0.1",
+                    "*/*; q=0.1",
+                ]
             );
         }
 
         #[test]
         fn prometheus_if_no_preference() {
-            assert_eq!(Format::Prometheus, get_metrics_format(&Accept::new(vec![])));
+            assert_eq!(get_metrics_format(&Accept::new(vec![])), Format::Prometheus);
         }
 
         #[test]
         fn openmetrics_if_available() {
             assert_eq!(
-                Format::OpenMetrics,
                 get_metrics_format(&Accept::new(vec![MediaType::new(
                     "application",
                     "openmetrics-text",
                 )
-                .into()]))
+                .into()])),
+                Format::OpenMetrics
             );
         }
 
         #[test]
         fn text_plain_if_only_available() {
             assert_eq!(
-                Format::Prometheus,
-                get_metrics_format(&Accept::new(vec![MediaType::new("text", "plain").into()]))
+                get_metrics_format(&Accept::new(vec![MediaType::new("text", "plain").into()])),
+                Format::Prometheus
             );
         }
 
         #[test]
         fn text_plain_if_higher_priority() {
             assert_eq!(
-                Format::Prometheus,
                 get_metrics_format(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     QMediaType(MediaType::new("text", "plain"), Some(1.0)),
-                ]))
+                ])),
+                Format::Prometheus
             );
             assert_eq!(
-                Format::Prometheus,
                 get_metrics_format(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "openmetrics-text"), Some(0.9)),
                     QMediaType(MediaType::new("text", "plain"), None),
-                ]))
+                ])),
+                Format::Prometheus
             );
             assert_eq!(
-                Format::Prometheus,
                 get_metrics_format(&Accept::new(vec![
                     QMediaType(MediaType::new("application", "*"), Some(0.9)),
                     QMediaType(
                         MediaType::new("text", "plain").with_params(("charset", "utf-8")),
                         Some(0.9),
                     ),
-                ]))
+                ])),
+                Format::Prometheus
             );
         }
 
         #[test]
         fn openmetrics_if_more_specific() {
             assert_eq!(
-                Format::OpenMetrics,
                 get_metrics_format(
                     &Accept::from_str(
                         "text/*;q=0.95,application/openmetrics-text;q=0.95;version=1.0.0,*/*;q=0.1"
                     )
                     .expect("Must parse")
-                )
+                ),
+                Format::OpenMetrics
             );
         }
 
         #[test]
         fn openmetrics_if_partial_match() {
             assert_eq!(
-                Format::OpenMetrics,
                 get_metrics_format(
                     &Accept::from_str("application/*,*/*;q=0.1")
                         .expect("Accept header value should parse")
-                )
+                ),
+                Format::OpenMetrics
             );
             assert_eq!(
-                Format::OpenMetrics,
                 get_metrics_format(
                     &Accept::from_str("application/*;q=1.0,text/plain;q=0.9,*/*;q=0.1")
                         .expect("Must parse")
-                )
+                ),
+                Format::OpenMetrics
             );
         }
 
         #[test]
         fn prometheus_for_firefox() {
             assert_eq!(
-                Format::Prometheus,
                 get_metrics_format(
                     &Accept::from_str(FIREFOX_ACCEPT_HEADER)
                         .expect("Accept header value should parse")
-                )
+                ),
+                Format::Prometheus
             );
         }
 
         #[test]
         fn prometheus_for_chrome() {
             assert_eq!(
-                Format::Prometheus,
                 get_metrics_format(
                     &Accept::from_str(CHROME_ACCEPT_HEADER)
                         .expect("Accept header value should parse")
-                )
+                ),
+                Format::Prometheus
             );
         }
 
         #[test]
         fn openmetrics_for_prometheus_scraper() {
             assert_eq!(
-                Format::OpenMetrics,
                 get_metrics_format(
                     &Accept::from_str(PROMETHEUS_SCRAPER_ACCEPT_HEADER)
                         .expect("Accept header value should parse")
-                )
+                ),
+                Format::OpenMetrics
             );
         }
     }
