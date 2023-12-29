@@ -23,9 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { toolchain: stable, host: ubuntu-22.04 }
-          - { toolchain: nightly, host: macos-12 }
+        toolchain: [stable, nightly]
+        host: [ubuntu-22.04, macos-13]
     runs-on: ${{ matrix.host }}
     steps:
       - name: Checkout source
@@ -37,6 +36,7 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
+          override: true
 
       - name: Set up cargo cache
         uses: actions/cache@v3.3.2
@@ -56,26 +56,17 @@ jobs:
             cargo-${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}
 
       - name: Check formatting
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Static analysis with clippy
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: clippy
-
-      - name: Static analysis with clippy
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: clippy
-          args: --tests
+        run: cargo clippy --all ${{ matrix.toolchain == 'nightly' && '-F nightly' || '' }}
 
       - name: Run tests
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: test
+        run: cargo test
+
+      - name: Run benchmarks
+        run: cargo bench  ${{ matrix.toolchain == 'nightly' && '-F nightly' || '' }}
+        if: matrix.toolchain == 'nightly'
 
       - name: Check for security issues
         uses: actions-rs/audit-check@v1.2.0
@@ -89,10 +80,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { desc: arm-mac,                    target: aarch64-apple-darwin,               host: macos-12,         profile: release,     toolchain: stable }
-          - { desc: arm-mac-dbg,                target: aarch64-apple-darwin,               host: macos-12,         profile: debug,       toolchain: stable }
-          - { desc: intel-mac,                  target: x86_64-apple-darwin,                host: macos-12,         profile: release,     toolchain: stable }
-          - { desc: intel-mac-dbg,              target: x86_64-apple-darwin,                host: macos-12,         profile: debug,       toolchain: stable }
+          - { desc: arm-mac,                    target: aarch64-apple-darwin,               host: macos-13,         profile: release,     toolchain: stable }
+          - { desc: arm-mac-dbg,                target: aarch64-apple-darwin,               host: macos-13,         profile: debug,       toolchain: stable }
+          - { desc: intel-mac,                  target: x86_64-apple-darwin,                host: macos-13,         profile: release,     toolchain: stable }
+          - { desc: intel-mac-dbg,              target: x86_64-apple-darwin,                host: macos-13,         profile: debug,       toolchain: stable }
           - { desc: arm-linux,                  target: armv7-unknown-linux-gnueabihf,      host: ubuntu-22.04,     profile: release,     toolchain: stable }
           - { desc: arm-linux-dbg,              target: armv7-unknown-linux-gnueabihf,      host: ubuntu-22.04,     profile: debug,       toolchain: stable }
           - { desc: arm-linux-static,           target: armv7-unknown-linux-musleabihf,     host: ubuntu-22.04,     profile: release,     toolchain: stable }

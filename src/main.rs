@@ -5,9 +5,10 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::cargo_common_metadata)]
 #![warn(clippy::unwrap_used)]
-#![allow(clippy::let_underscore_untyped)]
 #![allow(clippy::no_effect_underscore_binding)]
 #![allow(clippy::ignored_unit_patterns)]
+#![allow(soft_unstable)]
+#![cfg_attr(feature = "nightly", feature(test))]
 
 use crate::config::{read, DEFAULT_CONFIG};
 use crate::error::exit_if_handle_fatal;

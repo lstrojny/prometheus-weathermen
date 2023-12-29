@@ -1,15 +1,10 @@
+use derive_more::{Display, From, Into};
 use rocket::serde::Serialize;
 use serde::Deserialize;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone, From, PartialEq)]
 pub struct Kelvin(f32);
-
-impl From<f32> for Kelvin {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
 
 const ABSOLUTE_ZERO_IN_CELSIUS: f32 = 273.15;
 impl ToCelsius for Kelvin {
@@ -18,20 +13,9 @@ impl ToCelsius for Kelvin {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Copy, Clone, From, Into, PartialEq)]
+#[into(types(f64))]
 pub struct Celsius(f32);
-
-impl From<f32> for Celsius {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Celsius> for f64 {
-    fn from(value: Celsius) -> Self {
-        Self::from(value.0)
-    }
-}
 
 impl ToCelsius for Celsius {
     fn to_celsius(&self) -> Self {
@@ -39,17 +23,11 @@ impl ToCelsius for Celsius {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone, From, PartialEq)]
 pub struct Fahrenheit(f32);
 
 pub trait ToCelsius {
     fn to_celsius(&self) -> Celsius;
-}
-
-impl From<f32> for Fahrenheit {
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
 }
 
 impl ToCelsius for Fahrenheit {
@@ -61,46 +39,26 @@ impl ToCelsius for Fahrenheit {
 #[derive(Deserialize, Debug, Copy, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Ratio {
-    Percentage(u16),
-    PercentageDecimal(f64),
-    Ratio(f64),
+    Percentage(f64),
+    Fraction(f64),
 }
 
-impl Ratio {
-    pub fn as_f64(&self) -> f64 {
-        match self {
-            Self::Ratio(v) => *v,
-            Self::Percentage(v) => f64::from(*v) / 100.0,
-            Self::PercentageDecimal(v) => v / 100.0,
+impl From<Ratio> for f64 {
+    fn from(value: Ratio) -> Self {
+        match value {
+            Ratio::Fraction(v) => v,
+            Ratio::Percentage(v) => v / 100.0,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, From, Into, Debug, Clone, Display)]
+#[display(fmt = "{_0:.7}")]
 pub struct Coordinate(f64);
 
 impl PartialEq for Coordinate {
     fn eq(&self, other: &Self) -> bool {
         (self.0 - other.0).abs() < 0.000_000_1
-    }
-}
-
-impl Display for Coordinate {
-    // Standardize 7 digits for coordinates and that should be plenty
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.7}", self.0)
-    }
-}
-
-impl From<f64> for Coordinate {
-    fn from(value: f64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Coordinate> for f64 {
-    fn from(value: Coordinate) -> Self {
-        value.0
     }
 }
 
@@ -112,17 +70,5 @@ pub struct Coordinates {
     pub longitude: Coordinate,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, From, Into)]
 pub struct Meters(f64);
-
-impl From<f64> for Meters {
-    fn from(value: f64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Meters> for f64 {
-    fn from(value: Meters) -> Self {
-        value.0
-    }
-}
