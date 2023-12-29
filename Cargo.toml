@@ -22,7 +22,7 @@ hmac = "0.12.1"
 hex = "0.4.3"
 sha2 = "0.10.8"
 serde_json = "1.0.108"
-moka = { version = "0.12.1", features = ["sync"] }
+moka = { version = "0.12.2", features = ["sync"] }
 humantime-serde = "1.1.1"
 anyhow = "1.0.77"
 log = { version = "0.4.20", features = ["serde"] }
