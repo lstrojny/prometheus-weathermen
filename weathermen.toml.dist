@@ -61,7 +61,7 @@ longitude = 14.435965
 # Configure port to listen on. Default is 36333
 # port = 36333
 #
-# For more HTTP settings check https://rocket.rs/v0.5-rc/guide/configuration/
+# For more HTTP settings check https://rocket.rs/v0.5/guide/configuration/
 #
 # Configure the address to listen to, default is 127.0.0.1
 # address = "127.0.0.1"
@@ -75,7 +75,7 @@ longitude = 14.435965
 # Path to key file
 # key = "/path/toprivate_key.pem"
 #
-# See https://rocket.rs/v0.5-rc/guide/configuration/#tls for more
+# See https://rocket.rs/v0.5/guide/configuration/#tls for more
 
 
 # [auth]
