@@ -233,7 +233,7 @@ impl WeatherProvider for DeutscherWetterdienst {
         match &measurements[..] {
             [.., latest_measurement] => {
                 debug!(
-                    "Using latest measurement from {:?}: {:?}",
+                    "Using latest measurement from {}: {:?}",
                     latest_measurement.time,
                     latest_measurement.clone()
                 );

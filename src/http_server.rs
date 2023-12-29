@@ -70,7 +70,7 @@ async fn serve_metrics(
     for task in unscheduled_tasks.iter().cloned() {
         join_set.spawn(task::spawn_blocking(move || {
             info!(
-                "Requesting weather data for {:?} from {:?} ({:?})",
+                "Requesting weather data for {} from {} ({:?})",
                 task.request.name,
                 task.provider.id(),
                 task.request.query,

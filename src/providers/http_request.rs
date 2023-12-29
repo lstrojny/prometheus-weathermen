@@ -86,7 +86,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
 
     let value = request.cache.try_get_with_by_ref(&key, || {
         debug!(
-            "Generating cache item for request \"{:#} {:#}\" for {:?} with lifetime {:?}",
+            "Generating cache item for request \"{:#} {:#}\" for {} with lifetime {:?}",
             request.method,
             request.url,
             request.source,
@@ -97,7 +97,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
                 .unwrap_or(Duration::from_secs(0))
         );
 
-        let cicruit_breaker_scope = request
+        let circuit_breaker_scope = request
             .url
             .host_str()
             .ok_or_else(|| anyhow!("Could not extract host from URL"))?;
@@ -107,36 +107,36 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
             let circuit_breaker_registry_ro =
                 CIRCUIT_BREAKER_REGISTRY.read().expect("Poisoned lock");
 
-            trace!("Read lock acquired for {:?}", cicruit_breaker_scope);
+            trace!("Read lock acquired for {}", circuit_breaker_scope);
 
-            if let Some(cb) = circuit_breaker_registry_ro.get(cicruit_breaker_scope) {
-                return request_url_with_circuit_breaker(cicruit_breaker_scope, cb, request);
+            if let Some(cb) = circuit_breaker_registry_ro.get(circuit_breaker_scope) {
+                return request_url_with_circuit_breaker(circuit_breaker_scope, cb, request);
             }
 
             drop(circuit_breaker_registry_ro);
         }
 
-        ensure_circuit_breaker(cicruit_breaker_scope);
+        ensure_circuit_breaker(circuit_breaker_scope);
 
         trace!(
-            "Trying to acquire read lock after circuit breaker {:?} was instantiated",
-            cicruit_breaker_scope
+            "Trying to acquire read lock after circuit breaker {} was instantiated",
+            circuit_breaker_scope
         );
         CIRCUIT_BREAKER_REGISTRY
             .read()
             .map_err(|_| anyhow!("Circuit breaker RO lock is poisoned"))
             .and_then(|circuit_breaker_registry_ro| {
                 trace!(
-                    "Read lock acquired after circuit breaker {:?} was instantiated",
-                    cicruit_breaker_scope
+                    "Read lock acquired after circuit breaker {} was instantiated",
+                    circuit_breaker_scope
                 );
                 circuit_breaker_registry_ro
-                    .get(cicruit_breaker_scope)
+                    .get(circuit_breaker_scope)
                     .map_or_else(
                         || Err(anyhow!("Circuit breaker not found")),
                         |circuit_breaker| {
                             request_url_with_circuit_breaker(
-                                cicruit_breaker_scope,
+                                circuit_breaker_scope,
                                 circuit_breaker,
                                 request,
                             )
@@ -151,30 +151,30 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
     }
 }
 
-fn ensure_circuit_breaker(cicruit_breaker_scope: &str) {
+fn ensure_circuit_breaker(circuit_breaker_scope: &str) {
     trace!(
-        "Trying to acquire write lock to instantiate circuit breaker {:?}",
-        cicruit_breaker_scope
+        "Trying to acquire write lock to instantiate circuit breaker {}",
+        circuit_breaker_scope
     );
 
     let mut circuit_breaker_registry_rw = CIRCUIT_BREAKER_REGISTRY.write().expect("Poisoned lock");
     trace!(
-        "Write lock acquired to instantiate circuit breaker {:?}",
-        cicruit_breaker_scope
+        "Write lock acquired to instantiate circuit breaker {}",
+        circuit_breaker_scope
     );
 
-    if !circuit_breaker_registry_rw.contains_key(cicruit_breaker_scope) {
+    if !circuit_breaker_registry_rw.contains_key(circuit_breaker_scope) {
         trace!(
-            "Circuit breaker {:?} not yet instantiated, instantiating",
-            cicruit_breaker_scope
+            "Circuit breaker {} not yet instantiated, instantiating",
+            circuit_breaker_scope
         );
 
         let circuit_breaker = create_circuit_breaker();
 
-        circuit_breaker_registry_rw.insert(cicruit_breaker_scope.to_string(), circuit_breaker);
+        circuit_breaker_registry_rw.insert(circuit_breaker_scope.to_string(), circuit_breaker);
         drop(circuit_breaker_registry_rw);
 
-        trace!("Circuit breaker {:?} instantiated", cicruit_breaker_scope);
+        trace!("Circuit breaker {} instantiated", circuit_breaker_scope);
     }
 }
 
@@ -198,12 +198,12 @@ fn request_url_with_circuit_breaker<R: Debug>(
     match circuit_breaker.call(|| request_url(request)) {
         Err(Error::Inner(e)) => Err(anyhow!(e)),
         Err(Error::Rejected) => Err(anyhow!(
-            "Circuit breaker {:?} is open and prevented request",
+            "Circuit breaker {} is open and prevented request",
             circuit_breaker_scope
         )),
         Ok(response) => {
             trace!(
-                "Request to {:?} return with status code {:?}",
+                "Request to {} return with status code {}",
                 request.url.to_string(),
                 response.status()
             );

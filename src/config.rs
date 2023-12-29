@@ -113,7 +113,7 @@ impl Default for Config {
 }
 
 pub fn read(config_file: PathBuf, log_level: Level) -> anyhow::Result<Config> {
-    info!("Reading config file {config_file:?}");
+    info!("Reading config file {:?}", config_file);
 
     let config: Config = Figment::new()
         .merge(Serialized::defaults(Config::default()))
@@ -161,7 +161,7 @@ pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {
 
         if configured_provider.refresh_interval() < Duration::from_secs(60 * 5) {
             warn!(
-                "Updating weather information more often than every 5 minutes is discouraged. Consider increasing the refresh interval for {:?}", 
+                "Updating weather information more often than every 5 minutes is discouraged. Consider increasing the refresh interval for {}",
                 configured_provider.id()
             );
         }
