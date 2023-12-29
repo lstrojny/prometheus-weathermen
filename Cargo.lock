@@ -2231,9 +2231,9 @@ dependencies = [
 
 [[package]]
 name = "spade"
-version = "2.5.0"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "874799535a5ac50b123ec82e2e8015340fbebb6f71dc009ec0d4a6601fde16a4"
+checksum = "bd774eb23cff002036706e6ea83c3f4ab4c80dad89da76fe16d49f77ab71682f"
 dependencies = [
  "hashbrown 0.14.2",
  "num-traits",
