@@ -31,7 +31,7 @@ clap = { version = "4.4.12", features = ["derive"] }
 clap-verbosity-flag = "2.1.1"
 figment = { version = "0.10.12", features = ["toml", "env"] }
 prometheus-client = "0.22.0"
-rocket-basicauth = "2.1.1"
+rocket-basicauth = { git = "https://github.com/Owez/rocket-basicauth.git", rev = "refs/pull/8/head" }
 bcrypt = "0.15.0"
 openssl = { version = "0.10.62", features = ["vendored"] }
 simple_logger = { version = "4.3.0", features = ["timestamps", "colors", "stderr"] }
