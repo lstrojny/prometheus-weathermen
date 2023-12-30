@@ -14,13 +14,40 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        rust-env = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
+        cargo-unused-imports = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "cargo-unused-features";
+          version = "0.2.0";
+
+          src = pkgs.fetchFromGitHub {
+            owner = "TimonPost";
+            repo = pname;
+            rev = version;
+            hash = "sha256-wpu55tqw41lSpEZu94s9UEwf7Oq0ar5Fhh9ApkhaBtE=";
+          };
+
+          cargoHash = "sha256-K9I7Eg43BS2SKq5zZ3eZrMkmuHAx09OX240sH0eGs+k=";
+
+          buildInputs = [
+            pkgs.openssl
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ];
+
+          meta = {
+            description = "Potential unused, enabled feature flag finder and pruner";
+            homepage = "https://github.com/TimonPost/cargo-unused-features";
+          };
+        };
+        rust-env = pkgs.rust-bin.selectLatestNightlyWith
+          (toolchain: toolchain.default.override { extensions = [ "rust-src" ]; });
       in {
         devShell = pkgs.mkShell {
           packages = [
             rust-env
+            cargo-unused-imports
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+            pkgs.darwin.apple_sdk.frameworks.CoreServices
             pkgs.openssl
             pkgs.pkg-config
           ];

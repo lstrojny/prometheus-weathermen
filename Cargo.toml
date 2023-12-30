@@ -1,55 +1,122 @@
 [package]
 name = "prometheus-weathermen"
-description = "A prometheus exporter for weather data from various weather APIs"
-version = "0.8.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+version = "0.8.0"
+description = "A prometheus exporter for weather data from various weather APIs"
 keywords = ["prometheus", "prometheus-exporter", "weather", "monitoring"]
 categories = ["command-line-utilities"]
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/lstrojny/prometheus-weathermen"
 
-[profile.release]
-lto = true
-codegen-units = 1
-strip = "symbols"
-
 [dependencies]
-rocket = { version = "0.5.0-rc.3", features = ["tls"] }
-reqwest = { version = "0.11.23", features = ["json", "blocking"] }
-serde = "1.0.193"
-toml = "0.8.8"
-hmac = "0.12.1"
-hex = "0.4.3"
-sha2 = "0.10.8"
-serde_json = "1.0.108"
-moka = { version = "0.12.2", features = ["sync"] }
-humantime-serde = "1.1.1"
 anyhow = "1.0.77"
-log = { version = "0.4.20", features = ["serde"] }
-tokio = { version = "1.35.1", default-features = false }
-clap = { version = "4.4.12", features = ["derive"] }
-clap-verbosity-flag = "2.1.1"
-figment = { version = "0.10.12", features = ["toml", "env"] }
-prometheus-client = "0.22.0"
-rocket-basicauth = { git = "https://github.com/Owez/rocket-basicauth.git", rev = "refs/pull/8/head" }
 bcrypt = "0.15.0"
-openssl = { version = "0.10.62", features = ["vendored"] }
-simple_logger = { version = "4.3.0", features = ["timestamps", "colors", "stderr"] }
-csv = "1.3.0"
+clap-verbosity-flag = "2.1.1"
 const_format = "0.2.32"
-geo = "0.27.0"
-chrono = { version = "0.4.31", default-features = false, features = ["serde"] }
-zip = { version = "0.6.6", default-features = false, features = ["deflate-miniz"] }
-failsafe = "1.2.0"
-once_cell = "1.19.0"
+csv = "1.3.0"
 derive_more = "0.99.17"
+hex = "0.4.3"
+hmac = "0.12.1"
+humantime-serde = "1.1.1"
+prometheus-client = "0.22.0"
+sha2 = "0.10.8"
+toml = "0.8.8"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-systemd-journal-logger = "2.1.1"
+[dependencies.chrono]
+version = "0.4.31"
+features = ["serde"]
+default-features = false
+
+[dependencies.clap]
+version = "4.4.12"
+features = ["derive"]
+
+[dependencies.failsafe]
+version = "1.2.0"
+features = []
+default-features = false
+
+[dependencies.figment]
+version = "0.10.12"
+features = ["toml", "env"]
+
+[dependencies.geo]
+version = "0.27.0"
+features = []
+default-features = false
+
+[dependencies.log]
+version = "0.4.20"
+default-features = false
+
+[dependencies.moka]
+version = "0.12.2"
+features = ["sync"]
+default-features = false
+
+[dependencies.once_cell]
+version = "1.19.0"
+features = []
+default-features = false
+
+[dependencies.openssl]
+version = "0.10.62"
+features = ["vendored"]
+
+[dependencies.reqwest]
+version = "0.11.23"
+features = ["json", "blocking"]
+
+[dependencies.rocket]
+version = "0.5.0"
+features = ["tls"]
+
+[dependencies.rocket-basicauth]
+git = "https://github.com/Owez/rocket-basicauth.git"
+rev = "refs/pull/8/head"
+features = []
+
+[dependencies.serde]
+version = "1.0.193"
+features = []
+
+[dependencies.serde_json]
+version = "1.0.108"
+features = []
+default-features = false
+
+[dependencies.simple_logger]
+version = "4.3.0"
+features = ["time", "timestamps", "colored", "colors"]
+default-features = false
+
+[dependencies.tokio]
+version = "1.35.1"
+features = []
+default-features = false
+
+[dependencies.zip]
+version = "0.6.6"
+features = ["deflate-miniz"]
+default-features = false
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 
+[target."cfg(target_os = \"linux\")".dependencies]
+systemd-journal-logger = "2.1.1"
+
+[target."cfg(target_os = \"linux\")".dev-dependencies]
+
+[target."cfg(target_os = \"linux\")".build-dependencies]
+
 [features]
-nightly = []
 default = []
+nightly = []
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.release.package]
