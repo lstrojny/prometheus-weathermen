@@ -77,7 +77,7 @@ rev = "refs/pull/8/head"
 features = []
 
 [dependencies.serde]
-version = "1.0.193"
+version = "1.0.194"
 features = []
 
 [dependencies.serde_json]
