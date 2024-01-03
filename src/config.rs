@@ -29,19 +29,19 @@ const DEFAULT_PORT: u16 = 36333;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Location {
-    pub(crate) name: Option<String>,
+    pub name: Option<String>,
     #[serde(flatten)]
-    pub(crate) coordinates: Coordinates,
+    pub coordinates: Coordinates,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     #[serde(rename = "location")]
-    pub(crate) locations: BTreeMap<String, Location>,
+    pub locations: BTreeMap<String, Location>,
     #[serde(rename = "provider")]
-    pub(crate) providers: Option<Providers>,
-    pub(crate) http: rocket::Config,
-    pub(crate) auth: Option<CredentialsStore>,
+    pub providers: Option<Providers>,
+    pub http: rocket::Config,
+    pub auth: Option<CredentialsStore>,
 }
 
 fn default_rocket_config() -> rocket::Config {
@@ -89,10 +89,10 @@ pub type ProviderTasks = Vec<Task>;
 
 #[derive(Clone)]
 pub struct Task {
-    pub(crate) provider: Arc<dyn WeatherProvider + Send + Sync>,
-    pub(crate) request: WeatherRequest<Coordinates>,
-    pub(crate) client: Client,
-    pub(crate) cache: HttpRequestCache,
+    pub provider: Arc<dyn WeatherProvider + Send + Sync>,
+    pub request: WeatherRequest<Coordinates>,
+    pub client: Client,
+    pub cache: HttpRequestCache,
 }
 
 pub fn get_provider_tasks(config: Config) -> anyhow::Result<ProviderTasks> {

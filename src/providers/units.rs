@@ -65,9 +65,9 @@ impl PartialEq for Coordinate {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coordinates {
     #[serde(alias = "lat")]
-    pub(crate) latitude: Coordinate,
+    pub latitude: Coordinate,
     #[serde(alias = "lon")]
-    pub(crate) longitude: Coordinate,
+    pub longitude: Coordinate,
 }
 
 #[derive(Debug, Clone, From, Into)]

@@ -21,7 +21,7 @@ pub type Cache = MokaCache<(Method, Url), Vec<u8>>;
 pub struct Configuration {
     #[serde(default = "default_refresh_interval")]
     #[serde(with = "humantime_serde")]
-    pub(crate) refresh_interval: Duration,
+    pub refresh_interval: Duration,
 }
 
 const fn default_refresh_interval() -> Duration {
@@ -47,7 +47,7 @@ static CIRCUIT_BREAKER_REGISTRY: Lazy<RwLock<HashMap<String, HttpCircuitBreaker>
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 impl HttpCacheRequest<'_> {
-    pub(crate) fn new<'req, T: Debug>(
+    pub fn new<'req, T: Debug>(
         source: &'req str,
         client: &'req Client,
         cache: &'req HttpRequestCache,

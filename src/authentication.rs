@@ -34,10 +34,10 @@ impl<const N: usize> From<[(String, Hash); N]> for CredentialsStore {
 }
 
 impl CredentialsStore {
-    pub(crate) fn iter(&self) -> Iter<String, Hash> {
+    pub fn iter(&self) -> Iter<String, Hash> {
         self.0.iter()
     }
-    pub(crate) fn default_hash(&self) -> &Hash {
+    pub fn default_hash(&self) -> &Hash {
         BCRYPT_DEFAULT_HASH.get_or_init(|| Self::hash_default_password(self.max_cost()))
     }
 

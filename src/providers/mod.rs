@@ -63,13 +63,13 @@ impl IntoIterator for Providers {
 
 #[derive(Debug)]
 pub struct Weather {
-    pub(crate) location: String,
-    pub(crate) source: String,
-    pub(crate) city: String,
-    pub(crate) coordinates: Coordinates,
-    pub(crate) distance: Option<Meters>,
-    pub(crate) temperature: Celsius,
-    pub(crate) relative_humidity: Option<Ratio>,
+    pub location: String,
+    pub source: String,
+    pub city: String,
+    pub coordinates: Coordinates,
+    pub distance: Option<Meters>,
+    pub temperature: Celsius,
+    pub relative_humidity: Option<Ratio>,
 }
 
 pub trait WeatherProvider: Debug {
@@ -90,8 +90,8 @@ pub trait WeatherProvider: Debug {
 
 #[derive(Debug, Clone)]
 pub struct WeatherRequest<T> {
-    pub(crate) name: String,
-    pub(crate) query: T,
+    pub name: String,
+    pub query: T,
 }
 
 pub type HttpRequestCache = http_request::Cache;
