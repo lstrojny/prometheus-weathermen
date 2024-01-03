@@ -11,9 +11,9 @@ const ENDPOINT_URL: &str = "https://api.tomorrow.io/v4/weather/realtime";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Tomorrow {
-    pub api_key: String,
+    api_key: String,
     #[serde(flatten)]
-    pub cache: Configuration,
+    cache: Configuration,
 }
 
 #[derive(Deserialize, Debug)]
@@ -50,7 +50,7 @@ impl WeatherProvider for Tomorrow {
                     "location",
                     format!("{},{}", request.query.latitude, request.query.longitude),
                 ),
-                ("apikey", self.api_key.to_string()),
+                ("apikey", self.api_key.clone()),
                 ("units", "metric".into()),
             ],
         )?;

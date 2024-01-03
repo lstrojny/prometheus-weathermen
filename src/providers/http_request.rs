@@ -21,19 +21,19 @@ pub type Cache = MokaCache<(Method, Url), Vec<u8>>;
 pub struct Configuration {
     #[serde(default = "default_refresh_interval")]
     #[serde(with = "humantime_serde")]
-    pub refresh_interval: Duration,
+    pub(crate) refresh_interval: Duration,
 }
 
 const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
-pub struct HttpCacheRequest<'a, R: Debug = String> {
-    source: &'a str,
-    client: &'a Client,
-    cache: &'a HttpRequestCache,
-    method: &'a Method,
-    url: &'a Url,
+pub struct HttpCacheRequest<'req, R: Debug = String> {
+    source: &'req str,
+    client: &'req Client,
+    cache: &'req HttpRequestCache,
+    method: &'req Method,
+    url: &'req Url,
     deserialize: fn(body: &Vec<u8>) -> anyhow::Result<R>,
 }
 
@@ -47,14 +47,14 @@ static CIRCUIT_BREAKER_REGISTRY: Lazy<RwLock<HashMap<String, HttpCircuitBreaker>
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 impl HttpCacheRequest<'_> {
-    pub fn new<'a, T: Debug>(
-        source: &'a str,
-        client: &'a Client,
-        cache: &'a HttpRequestCache,
-        method: &'a Method,
-        url: &'a Url,
+    pub(crate) fn new<'req, T: Debug>(
+        source: &'req str,
+        client: &'req Client,
+        cache: &'req HttpRequestCache,
+        method: &'req Method,
+        url: &'req Url,
         deserialize: fn(body: &Vec<u8>) -> anyhow::Result<T>,
-    ) -> HttpCacheRequest<'a, T> {
+    ) -> HttpCacheRequest<'req, T> {
         HttpCacheRequest {
             source,
             client,
@@ -65,13 +65,13 @@ impl HttpCacheRequest<'_> {
         }
     }
 
-    pub fn new_json_request<'a, T: Debug + DeserializeOwned>(
-        source: &'a str,
-        client: &'a Client,
-        cache: &'a HttpRequestCache,
-        method: &'a Method,
-        url: &'a Url,
-    ) -> HttpCacheRequest<'a, T> {
+    pub fn new_json_request<'req, T: Debug + DeserializeOwned>(
+        source: &'req str,
+        client: &'req Client,
+        cache: &'req HttpRequestCache,
+        method: &'req Method,
+        url: &'req Url,
+    ) -> HttpCacheRequest<'req, T> {
         HttpCacheRequest::new::<T>(source, client, cache, method, url, serde_deserialize_body)
     }
 }
@@ -81,7 +81,9 @@ fn serde_deserialize_body<T: Debug + DeserializeOwned>(body: &Vec<u8>) -> anyhow
     Ok(serde_json::from_slice(body)?)
 }
 
-pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result<R> {
+pub(in crate::providers) fn request_cached<R: Debug>(
+    request: &HttpCacheRequest<R>,
+) -> anyhow::Result<R> {
     let key = (request.method.clone(), request.url.clone());
 
     let value = request.cache.try_get_with_by_ref(&key, || {
@@ -114,7 +116,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
             }
 
             drop(circuit_breaker_registry_ro);
-        }
+        };
 
         ensure_circuit_breaker(circuit_breaker_scope);
 
@@ -124,7 +126,7 @@ pub fn request_cached<R: Debug>(request: &HttpCacheRequest<R>) -> anyhow::Result
         );
         CIRCUIT_BREAKER_REGISTRY
             .read()
-            .map_err(|_| anyhow!("Circuit breaker RO lock is poisoned"))
+            .map_err(|e| anyhow!("Circuit breaker RO lock is poisoned: {}", e.to_string()))
             .and_then(|circuit_breaker_registry_ro| {
                 trace!(
                     "Read lock acquired after circuit breaker {} was instantiated",
@@ -171,7 +173,7 @@ fn ensure_circuit_breaker(circuit_breaker_scope: &str) {
 
         let circuit_breaker = create_circuit_breaker();
 
-        circuit_breaker_registry_rw.insert(circuit_breaker_scope.to_string(), circuit_breaker);
+        circuit_breaker_registry_rw.insert(circuit_breaker_scope.to_owned(), circuit_breaker);
         drop(circuit_breaker_registry_rw);
 
         trace!("Circuit breaker {} instantiated", circuit_breaker_scope);

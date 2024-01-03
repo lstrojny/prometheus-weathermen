@@ -13,6 +13,7 @@ use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
+use std::str::from_utf8;
 use std::time::Duration;
 use zip::ZipArchive;
 
@@ -23,7 +24,7 @@ const STATION_LIST_URL: &str = concatcp!(BASE_URL, "/zehn_now_tu_Beschreibung_St
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DeutscherWetterdienst {
     #[serde(flatten)]
-    pub cache: Configuration,
+    cache: Configuration,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
@@ -73,10 +74,10 @@ fn parse_weather_station_list_csv(data: &str) -> Vec<WeatherStation> {
         .collect::<Vec<WeatherStation>>()
 }
 
-fn find_closest_weather_station<'a>(
+fn find_closest_weather_station<'stations>(
     coords: &Coordinates,
-    weather_stations: &'a [WeatherStation],
-) -> anyhow::Result<&'a WeatherStation> {
+    weather_stations: &'stations [WeatherStation],
+) -> anyhow::Result<&'stations WeatherStation> {
     let point: Point<f64> = Point::new(
         coords.longitude.clone().into(),
         coords.latitude.clone().into(),
@@ -89,10 +90,13 @@ fn find_closest_weather_station<'a>(
     );
 
     match points.closest_point(&point) {
-        Closest::SinglePoint(point) | Closest::Intersection(point) => {
+        Closest::SinglePoint(closest_point) | Closest::Intersection(closest_point) => {
             let matching_station = weather_stations
                 .iter()
-                .find(|s| s.longitude == point.x().into() && s.latitude == point.y().into())
+                .find(|station| {
+                    station.longitude == closest_point.x().into()
+                        && station.latitude == closest_point.y().into()
+                })
                 .expect("Must be able to find matching weather station");
 
             Ok(matching_station)
@@ -123,10 +127,10 @@ fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
             file.name()
         );
 
-        let mut buf: String = String::new();
-        file.read_to_string(&mut buf)?;
+        let mut str_buf = String::new();
+        file.read_to_string(&mut str_buf)?;
 
-        return Ok(buf);
+        return Ok(str_buf);
     }
 
     Err(anyhow!("Could not find weather data file in ZIP archive"))
@@ -152,6 +156,7 @@ struct Measurement {
 
 mod minute_precision_date_format {
     use chrono::{DateTime, NaiveDateTime, Utc};
+    use serde::de::Error;
     use serde::{self, Deserialize, Deserializer};
 
     const FORMAT: &str = "%Y%m%d%H%M";
@@ -163,7 +168,7 @@ mod minute_precision_date_format {
         let s = String::deserialize(deserializer)?;
         NaiveDateTime::parse_from_str(&s, FORMAT)
             .map(|v| v.and_utc())
-            .map_err(serde::de::Error::custom)
+            .map_err(Error::custom)
     }
 }
 
@@ -217,11 +222,7 @@ impl WeatherProvider for DeutscherWetterdienst {
             cache,
             &Method::GET,
             &Url::parse(STATION_LIST_URL)?,
-            |body| {
-                let str: String = body.iter().map(|&c| c as char).collect();
-
-                Ok(parse_weather_station_list_csv(&str))
-            },
+            |body| Ok(from_utf8(body).map(parse_weather_station_list_csv)?),
         ))?;
 
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
@@ -230,7 +231,7 @@ impl WeatherProvider for DeutscherWetterdienst {
             reqwest_cached_measurement_csv(cache, client, &closest_station.station_id)?;
         let measurements = parse_measurement_data_csv(&measurement_csv);
 
-        match &measurements[..] {
+        match &*measurements {
             [.., latest_measurement] => {
                 debug!(
                     "Using latest measurement from {}: {:?}",

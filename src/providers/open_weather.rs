@@ -16,9 +16,9 @@ const ENDPOINT_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenWeather {
-    pub api_key: String,
+    api_key: String,
     #[serde(flatten)]
-    pub cache: Configuration,
+    cache: Configuration,
 }
 
 #[derive(Deserialize, Debug)]
@@ -50,7 +50,7 @@ impl WeatherProvider for OpenWeather {
             &[
                 ("lat", request.query.latitude.to_string()),
                 ("lon", request.query.longitude.to_string()),
-                ("appid", self.api_key.to_string()),
+                ("appid", self.api_key.clone()),
             ],
         )?;
 
