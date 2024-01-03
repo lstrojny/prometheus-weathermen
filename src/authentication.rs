@@ -18,6 +18,12 @@ static AUTHENTICATION_CACHE: Lazy<Cache<(String, String), Result<Granted, Denied
 #[derive(Serialize, Deserialize, Debug, Into, Clone, Display, From)]
 pub struct Hash(String);
 
+impl Hash {
+    fn cost(&self) -> Option<u32> {
+        self.0.split('$').nth(2).and_then(|v| v.parse().ok())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, From, Clone, Default)]
 pub struct CredentialsStore(HashMap<String, Hash>);
 
@@ -45,14 +51,7 @@ impl CredentialsStore {
     }
 
     fn max_cost(&self) -> Option<u32> {
-        self.0.values().map(Self::cost).max().flatten()
-    }
-
-    fn cost(hash: &Hash) -> Option<u32> {
-        hash.to_string()
-            .split('$')
-            .nth(2)
-            .and_then(|v| v.parse::<u32>().ok())
+        self.0.values().map(Hash::cost).max().flatten()
     }
 }
 
@@ -129,31 +128,27 @@ fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Gran
 #[cfg(test)]
 mod tests {
     mod default_hash {
-        use crate::authentication::{CredentialsStore, BCRYPT_DEFAULT_COST};
+        use crate::authentication::{CredentialsStore, Hash, BCRYPT_DEFAULT_COST};
 
         #[test]
         fn none_if_empty_string() {
-            assert_eq!(CredentialsStore::cost(&String::new().into()), None);
+            assert_eq!(Hash("".into()).cost(), None);
         }
 
         #[test]
         fn none_if_unparseable_string() {
-            assert_eq!(CredentialsStore::cost(&"$12".to_string().into()), None);
+            assert_eq!(Hash("$12".into()).cost(), None);
         }
 
         #[test]
         fn none_if_incomplete_string() {
-            assert_eq!(CredentialsStore::cost(&"$2a$".to_string().into()), None);
+            assert_eq!(Hash("$2a$".into()).cost(), None);
         }
 
         #[test]
         fn cost_128() {
             assert_eq!(
-                CredentialsStore::cost(
-                    &"$2a$255$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW"
-                        .to_string()
-                        .into()
-                ),
+                Hash("$2a$255$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
                 Some(255u32)
             );
         }
@@ -161,11 +156,7 @@ mod tests {
         #[test]
         fn cost_10() {
             assert_eq!(
-                CredentialsStore::cost(
-                    &"$2a$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW"
-                        .to_string()
-                        .into()
-                ),
+                Hash("$2a$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
                 Some(10u32)
             );
         }
@@ -173,11 +164,7 @@ mod tests {
         #[test]
         fn cost_5() {
             assert_eq!(
-                CredentialsStore::cost(
-                    &"$2a$05$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW"
-                        .to_string()
-                        .into()
-                ),
+                Hash("$2a$05$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
                 Some(5u32)
             );
         }
@@ -185,11 +172,7 @@ mod tests {
         #[test]
         fn cost_5_unpadded() {
             assert_eq!(
-                CredentialsStore::cost(
-                    &"$2a$5$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW"
-                        .to_string()
-                        .into()
-                ),
+                Hash("$2a$5$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
                 Some(5u32)
             );
         }
