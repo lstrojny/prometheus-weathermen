@@ -122,7 +122,7 @@ mod providers;
 
 #[cfg(debug_assertions)]
 #[derive(Copy, Clone, Debug, Default)]
-pub struct DebugLevel;
+struct DebugLevel;
 
 #[cfg(debug_assertions)]
 impl clap_verbosity_flag::LogLevel for DebugLevel {
@@ -154,7 +154,7 @@ struct Args {
 ///
 /// Will panic if the log level cannot be parsed
 #[launch]
-pub async fn start_server() -> Rocket<Build> {
+async fn start_server() -> Rocket<Build> {
     let args = Args::parse();
 
     let log_level = args

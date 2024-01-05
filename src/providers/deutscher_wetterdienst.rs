@@ -13,7 +13,6 @@ use reqwest::blocking::Client;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
-use std::str::from_utf8;
 use std::time::Duration;
 use zip::ZipArchive;
 
@@ -57,21 +56,56 @@ fn strip_duplicate_spaces(data: &str) -> String {
         .collect()
 }
 
-fn parse_weather_station_list_csv(data: &str) -> Vec<WeatherStation> {
+fn disambiguate_multi_words(data: &str) -> String {
+    data.split('\n')
+        .enumerate()
+        .map(|(line_no, line)| {
+            if line_no == 0 || line_no == 1 {
+                line.to_owned()
+            } else {
+                disambiguate_multi_words_line(line)
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+fn disambiguate_multi_words_line(line: &str) -> String {
+    let mut line_reversed = line.trim().chars().rev().peekable();
+    let mut new_line = String::new();
+    let mut quote_opened = false;
+    let mut quote_closed = false;
+    while let Some(cur_char) = line_reversed.next() {
+        match (cur_char, line_reversed.peek(), quote_opened, quote_closed) {
+            (' ', Some(&next_char), false, false) if next_char != ' ' => {
+                new_line.push_str(" \"");
+                quote_opened = true;
+            }
+            (' ', Some(&next_char), true, false) if next_char.is_ascii_digit() => {
+                new_line.push('"');
+                new_line.push(cur_char);
+                quote_closed = true;
+            }
+            _ => new_line.push(cur_char),
+        }
+    }
+    new_line.chars().rev().collect()
+}
+
+fn parse_weather_station_list_csv(data: &str) -> anyhow::Result<Vec<WeatherStation>> {
     let stripped = strip_duplicate_spaces(data);
+    let processed = disambiguate_multi_words(&stripped);
 
     let reader = csv::ReaderBuilder::new()
         .delimiter(b' ')
-        .double_quote(false)
         .comment(Some(b'-'))
         .trim(Trim::All)
         .flexible(true)
-        .from_reader(stripped.as_bytes());
+        .from_reader(processed.as_bytes());
 
-    reader
+    Ok(reader
         .into_deserialize::<WeatherStation>()
-        .map(|m| m.expect("Should always succeed"))
-        .collect::<Vec<WeatherStation>>()
+        .collect::<Result<Vec<WeatherStation>, csv::Error>>()?)
 }
 
 fn find_closest_weather_station<'stations>(
@@ -222,7 +256,14 @@ impl WeatherProvider for DeutscherWetterdienst {
             cache,
             &Method::GET,
             &Url::parse(STATION_LIST_URL)?,
-            |body| Ok(from_utf8(body).map(parse_weather_station_list_csv)?),
+            |body| {
+                let str: String = body
+                    .iter()
+                    .filter_map(|&c| char::from_u32(c.into()))
+                    .collect();
+
+                parse_weather_station_list_csv(&str)
+            },
         ))?;
 
         let closest_station = find_closest_weather_station(&request.query, &stations)?;
@@ -282,14 +323,24 @@ mod tests {
             assert_eq!(
                 parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
-00044 20070209 20230111             44     52.9336    8.2370 Großenkneten                             Niedersachsen                                                                                     \n\
-"),
+00044 20070209 20230111             44     52.7553    7.4815 Gro\u{df} Ber\u{df}en                             Niedersachsen                                                                                     \n\
+").expect("Parsing works"),
                 vec![WeatherStation {
                     station_id: "00044".into(),
-                    name: "Großenkneten".into(),
-                    latitude: 52.9336.into(),
-                    longitude: 8.2370.into(),
+                    name: "Gro\u{df} Ber\u{df}en".into(),
+                    latitude: 52.7553_f64.into(),
+                    longitude: 7.4815_f64.into(),
                 }]
+            );
+        }
+
+        #[test]
+        fn parse_error() {
+            assert!(
+                parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
+broken\n\
+").expect_err("Will fail to parse").to_string().contains("CSV deserialize error: record 1"),
             );
         }
     }
@@ -306,30 +357,30 @@ mod tests {
             assert_eq!(
                 find_closest_weather_station(
                     &Coordinates {
-                        latitude: 48.11591.into(),
-                        longitude: 11.570_906.into(),
+                        latitude: 48.11591_f64.into(),
+                        longitude: 11.570_906_f64.into(),
                     },
                     &[
                         WeatherStation {
                             station_id: "03379".into(),
-                            name: "München-Stadt".into(),
-                            latitude: 48.1632.into(),
-                            longitude: 11.5429.into(),
+                            name: "M\u{fc}nchen-Stadt".into(),
+                            latitude: 48.1632_f64.into(),
+                            longitude: 11.5429_f64.into(),
                         },
                         WeatherStation {
                             station_id: "01262".into(),
-                            name: "München-Flughafen".into(),
-                            latitude: 48.3477.into(),
-                            longitude: 11.8134.into(),
+                            name: "M\u{fc}nchen-Flughafen".into(),
+                            latitude: 48.3477_f64.into(),
+                            longitude: 11.8134_f64.into(),
                         },
                     ]
                 )
                 .expect("Should find something"),
                 &WeatherStation {
                     station_id: "03379".into(),
-                    name: "München-Stadt".into(),
-                    latitude: 48.1632.into(),
-                    longitude: 11.5429.into(),
+                    name: "M\u{fc}nchen-Stadt".into(),
+                    latitude: 48.1632_f64.into(),
+                    longitude: 11.5429_f64.into(),
                 }
             );
         }
@@ -369,12 +420,12 @@ mod tests {
         #[test]
         fn parse_example() {
             assert_eq!(
-                &parse_measurement_data_csv(
+                &*parse_measurement_data_csv(
                     &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
             379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor"
-                        .to_string(),
-                )[..],
-                &[Measurement {
+                        .to_owned(),
+                ),
+                [Measurement {
                     _station_id: "379".into(),
                     _atmospheric_pressure: "-999".into(),
                     _dew_point_temperature_200_centimeters: 2.4.into(),

@@ -132,7 +132,7 @@ mod tests {
 
         #[test]
         fn none_if_empty_string() {
-            assert_eq!(Hash("".into()).cost(), None);
+            assert_eq!(Hash(String::new()).cost(), None);
         }
 
         #[test]
@@ -149,7 +149,7 @@ mod tests {
         fn cost_128() {
             assert_eq!(
                 Hash("$2a$255$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
-                Some(255u32)
+                Some(255_u32)
             );
         }
 
@@ -157,7 +157,7 @@ mod tests {
         fn cost_10() {
             assert_eq!(
                 Hash("$2a$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
-                Some(10u32)
+                Some(10_u32)
             );
         }
 
@@ -165,7 +165,7 @@ mod tests {
         fn cost_5() {
             assert_eq!(
                 Hash("$2a$05$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
-                Some(5u32)
+                Some(5_u32)
             );
         }
 
@@ -173,7 +173,7 @@ mod tests {
         fn cost_5_unpadded() {
             assert_eq!(
                 Hash("$2a$5$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW".into()).cost(),
-                Some(5u32)
+                Some(5_u32)
             );
         }
 
@@ -244,7 +244,7 @@ mod tests {
                 maybe_authenticate(
                     &Some(CredentialsStore::from([(
                         "joanna".into(),
-                        SECRET_HASH.to_string().into()
+                        SECRET_HASH.to_owned().into()
                     )])),
                     &Some(BasicAuth {
                         username: "joanna".into(),
@@ -260,8 +260,8 @@ mod tests {
             assert_eq!(
                 maybe_authenticate(
                     &Some(CredentialsStore::from([(
-                        "joanna".to_string(),
-                        SECRET_HASH.to_string().into()
+                        "joanna".to_owned(),
+                        SECRET_HASH.to_owned().into()
                     )])),
                     &Some(BasicAuth {
                         username: "joanna".into(),
@@ -277,8 +277,8 @@ mod tests {
             assert_eq!(
                 maybe_authenticate(
                     &Some(CredentialsStore::from([(
-                        "joanna".to_string(),
-                        SECRET_HASH.to_string().into()
+                        "joanna".to_owned(),
+                        SECRET_HASH.to_owned().into()
                     )])),
                     &Some(BasicAuth {
                         username: "joanna".into(),

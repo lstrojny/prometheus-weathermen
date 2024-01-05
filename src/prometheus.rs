@@ -97,6 +97,7 @@ pub fn format_metrics(_format: Format, weathers: Vec<Weather>) -> anyhow::Result
 
 #[cfg(test)]
 mod tests {
+    use crate::config::VERSION;
     use crate::prometheus::{format_metrics, Format};
     use crate::providers::units::Ratio::Fraction;
     use crate::providers::units::{Celsius, Coordinate, Coordinates};
@@ -144,8 +145,8 @@ mod tests {
                     vec![Weather {
                         source: "org.example".into(),
                         coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1),
-                            longitude: Coordinate::from(10.01234),
+                            latitude: Coordinate::from(20.1_f64),
+                            longitude: Coordinate::from(10.01234_f64),
                         },
                         location: "My Name".into(),
                         city: "Some City".into(),
@@ -162,7 +163,7 @@ mod tests {
 # UNIT weather_temperature_celsius celsius
 weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # EOF"##,
-                crate::config::VERSION
+                VERSION
             )
         );
     }
@@ -176,8 +177,8 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
                     vec![Weather {
                         source: "org.example".into(),
                         coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1),
-                            longitude: Coordinate::from(10.01234),
+                            latitude: Coordinate::from(20.1_f64),
+                            longitude: Coordinate::from(10.01234_f64),
                         },
                         location: "My Name".into(),
                         city: "Some City".into(),
@@ -198,7 +199,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # UNIT weather_relative_humidity_ratio ratio
 weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
 # EOF"##,
-                crate::config::VERSION
+                VERSION
             )
         );
     }
@@ -213,8 +214,8 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                         Weather {
                             source: "org.example".into(),
                             coordinates: Coordinates {
-                                latitude: Coordinate::from(20.1),
-                                longitude: Coordinate::from(10.01234),
+                                latitude: Coordinate::from(20.1_f64),
+                                longitude: Coordinate::from(10.01234_f64),
                             },
                             location: "My Name".into(),
                             city: "Some City".into(),
@@ -225,8 +226,8 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                         Weather {
                             source: "com.example".into(),
                             coordinates: Coordinates {
-                                latitude: Coordinate::from(30.1),
-                                longitude: Coordinate::from(20.01234),
+                                latitude: Coordinate::from(30.1_f64),
+                                longitude: Coordinate::from(20.01234_f64),
                             },
                             location: "Another Name".into(),
                             city: "Another City".into(),
@@ -250,7 +251,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 weather_relative_humidity_ratio{{version="{0}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 0.75
 weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
 # EOF"##,
-                crate::config::VERSION
+                VERSION
             )
         );
     }
@@ -263,14 +264,14 @@ weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My
                     vec![Weather {
                         source: "org.example".into(),
                         coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1),
-                            longitude: Coordinate::from(10.01234),
+                            latitude: Coordinate::from(20.1_f64),
+                            longitude: Coordinate::from(10.01234_f64),
                         },
                         location: "My Name".into(),
                         city: "Some City".into(),
-                        temperature: Celsius::from(25.5),
+                        temperature: Celsius::from(25.5_f32),
                         relative_humidity: None,
-                        distance: Some(100.1.into())
+                        distance: Some(100.1_f64.into())
                     }]
                 )
                 .expect("Formatting should work")
@@ -285,7 +286,7 @@ weather_temperature_celsius{{version="{0}",source="org.example",location="My Nam
 # UNIT weather_station_distance_meters meters
 weather_station_distance_meters{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 100.1
 # EOF"##,
-                crate::config::VERSION
+                VERSION
             )
         );
     }
