@@ -70,26 +70,32 @@ fn disambiguate_multi_words(data: &str) -> String {
         .join("\n")
 }
 
-fn disambiguate_multi_words_line(line: &str) -> String {
-    let mut line_reversed = line.trim().chars().rev().peekable();
-    let mut new_line = String::new();
-    let mut quote_opened = false;
-    let mut quote_closed = false;
+#[derive(Copy, Clone)]
+enum Quote {
+    None,
+    Open,
+    Closed,
+}
+
+fn disambiguate_multi_words_line(orig_line: &str) -> String {
+    let mut line_reversed = orig_line.trim().chars().rev().peekable();
+    let mut line = String::new();
+    let mut quote = Quote::None;
     while let Some(cur_char) = line_reversed.next() {
-        match (cur_char, line_reversed.peek(), quote_opened, quote_closed) {
-            (' ', Some(&next_char), false, false) if next_char != ' ' => {
-                new_line.push_str(" \"");
-                quote_opened = true;
+        match (cur_char, line_reversed.peek(), quote) {
+            (' ', Some(&next_char), Quote::None) if next_char != ' ' => {
+                line.push_str(" \"");
+                quote = Quote::Open;
             }
-            (' ', Some(&next_char), true, false) if next_char.is_ascii_digit() => {
-                new_line.push('"');
-                new_line.push(cur_char);
-                quote_closed = true;
+            (' ', Some(&next_char), Quote::Open) if next_char.is_ascii_digit() => {
+                line.push('"');
+                line.push(cur_char);
+                quote = Quote::Closed;
             }
-            _ => new_line.push(cur_char),
+            _ => line.push(cur_char),
         }
     }
-    new_line.chars().rev().collect()
+    line.chars().rev().collect()
 }
 
 fn parse_weather_station_list_csv(data: &str) -> anyhow::Result<Vec<WeatherStation>> {
