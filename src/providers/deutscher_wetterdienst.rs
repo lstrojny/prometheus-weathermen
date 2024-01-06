@@ -78,11 +78,11 @@ enum Quote {
 }
 
 fn disambiguate_multi_words_line(orig_line: &str) -> String {
-    let mut line_reversed = orig_line.trim().chars().rev().peekable();
+    let mut orig_line_reversed = orig_line.trim().chars().rev().peekable();
     let mut line = String::new();
     let mut quote = Quote::None;
-    while let Some(cur_char) = line_reversed.next() {
-        match (cur_char, line_reversed.peek(), quote) {
+    while let Some(cur_char) = orig_line_reversed.next() {
+        match (cur_char, orig_line_reversed.peek(), quote) {
             (' ', Some(&next_char), Quote::None) if next_char != ' ' => {
                 line.push_str(" \"");
                 quote = Quote::Open;
