@@ -42,8 +42,8 @@ fn strip_duplicate_spaces(data: &str) -> String {
     let mut prev_space = false;
 
     data.chars()
-        .filter(|c| {
-            let cur_space = *c == ' ';
+        .filter(|&c| {
+            let cur_space = c == ' ';
 
             if cur_space && prev_space {
                 return false;
