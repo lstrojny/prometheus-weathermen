@@ -298,7 +298,7 @@ mod tests {
             use test::Bencher;
 
             fn credentials_store() -> CredentialsStore {
-                CredentialsStore::from([("joanna".into(), SECRET_HASH.to_string().into())])
+                CredentialsStore::from([("joanna".into(), SECRET_HASH.to_owned().into())])
             }
 
             fn setup_benchmark_run() {
@@ -336,7 +336,7 @@ mod tests {
                             password: "incorrect".into(),
                         },
                     )
-                })
+                });
             }
 
             #[bench]
@@ -351,7 +351,7 @@ mod tests {
                             password: "secret".into(),
                         },
                     )
-                })
+                });
             }
         }
     }
