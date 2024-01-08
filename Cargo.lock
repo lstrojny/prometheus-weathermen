@@ -2584,9 +2584,9 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "value-bag"
-version = "1.4.3"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62ce5bb364b23e66b528d03168df78b38c0f7b6fe17386928f29d5ab2e7cb2f7"
+checksum = "dd65ff0de3304a013e6dfeb7324e1cd389a8a000e582e3c9c9fae82ced778e26"
 
 [[package]]
 name = "vcpkg"
