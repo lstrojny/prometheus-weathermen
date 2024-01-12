@@ -1,5 +1,3 @@
-#[cfg(target_os = "linux")]
-use crate::config::VERSION;
 use log::debug;
 
 pub fn init(level: log::Level) -> anyhow::Result<()> {
@@ -10,7 +8,7 @@ pub fn init(level: log::Level) -> anyhow::Result<()> {
         debug!("Initialize systemd journal logger with level {level:?}");
 
         return Ok(systemd_journal_logger::JournalLog::new()?
-            .with_extra_fields(vec![("VERSION", VERSION)])
+            .with_extra_fields(vec![("VERSION", crate::config::VERSION)])
             .install()?);
     }
 
