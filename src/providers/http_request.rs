@@ -1,5 +1,6 @@
 use crate::providers::HttpRequestCache;
 use anyhow::anyhow;
+use derive_more::Constructor;
 use failsafe::backoff::{exponential, Exponential};
 use failsafe::failure_policy::{consecutive_failures, ConsecutiveFailures};
 use failsafe::{CircuitBreaker, Config, Error, StateMachine};
@@ -14,7 +15,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::RwLock;
 use std::time::Duration;
-use derive_more::Constructor;
 
 pub type Cache = MokaCache<(Method, Url), Vec<u8>>;
 
