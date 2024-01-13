@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::RwLock;
 use std::time::Duration;
+use derive_more::Constructor;
 
 pub type Cache = MokaCache<(Method, Url), Vec<u8>>;
 
@@ -28,6 +29,7 @@ const fn default_refresh_interval() -> Duration {
     Duration::from_secs(60 * 10)
 }
 
+#[derive(Constructor)]
 pub struct HttpCacheRequest<'req, R: Debug = String> {
     source: &'req str,
     client: &'req Client,
@@ -47,24 +49,6 @@ static CIRCUIT_BREAKER_REGISTRY: Lazy<RwLock<HashMap<String, HttpCircuitBreaker>
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 impl HttpCacheRequest<'_> {
-    pub fn new<'req, T: Debug>(
-        source: &'req str,
-        client: &'req Client,
-        cache: &'req HttpRequestCache,
-        method: &'req Method,
-        url: &'req Url,
-        deserialize: fn(body: &Vec<u8>) -> anyhow::Result<T>,
-    ) -> HttpCacheRequest<'req, T> {
-        HttpCacheRequest {
-            source,
-            client,
-            cache,
-            method,
-            url,
-            deserialize,
-        }
-    }
-
     pub fn new_json_request<'req, T: Debug + DeserializeOwned>(
         source: &'req str,
         client: &'req Client,
@@ -72,7 +56,7 @@ impl HttpCacheRequest<'_> {
         method: &'req Method,
         url: &'req Url,
     ) -> HttpCacheRequest<'req, T> {
-        HttpCacheRequest::new::<T>(source, client, cache, method, url, serde_deserialize_body)
+        HttpCacheRequest::new(source, client, cache, method, url, serde_deserialize_body)
     }
 }
 
