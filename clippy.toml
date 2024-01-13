@@ -1,1 +1,1 @@
-absolute-paths-allowed-crates = ["log", "crate::config", "std"]
+absolute-paths-allowed-crates = ["log", "crate", "std"]
