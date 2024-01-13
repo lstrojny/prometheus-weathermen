@@ -136,158 +136,143 @@ mod tests {
         }
     }
 
-    #[test]
-    fn format_single_temperature() {
+    fn test_format_metrics(format: Format, weathers: Vec<Weather>, expected: &str) {
         assert_str_eq!(
             sort_output_deterministically(
-                &format_metrics(
-                    Format::Prometheus,
-                    vec![Weather {
-                        source: "org.example".into(),
-                        coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1_f64),
-                            longitude: Coordinate::from(10.01234_f64),
-                        },
-                        location: "My Name".into(),
-                        city: "Some City".into(),
-                        temperature: Celsius::from(25.5),
-                        relative_humidity: None,
-                        distance: None,
-                    }]
-                )
-                .expect("Formatting should work")
+                &format_metrics(format, weathers).expect("Formatting should work")
             ),
-            format!(
+            expected
+        );
+    }
+
+    #[test]
+    fn format_single_temperature() {
+        test_format_metrics(
+            Format::Prometheus,
+            vec![Weather {
+                source: "org.example".into(),
+                coordinates: Coordinates {
+                    latitude: Coordinate::from(20.1_f64),
+                    longitude: Coordinate::from(10.01234_f64),
+                },
+                location: "My Name".into(),
+                city: "Some City".into(),
+                temperature: Celsius::from(25.5),
+                relative_humidity: None,
+                distance: None,
+            }],
+            &format!(
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
-# EOF"##,
-                VERSION
-            )
+weather_temperature_celsius{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
+# EOF"##
+            ),
         );
     }
 
     #[test]
     fn format_temperature_and_humidity() {
-        assert_str_eq!(
-            sort_output_deterministically(
-                &format_metrics(
-                    Format::Prometheus,
-                    vec![Weather {
-                        source: "org.example".into(),
-                        coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1_f64),
-                            longitude: Coordinate::from(10.01234_f64),
-                        },
-                        location: "My Name".into(),
-                        city: "Some City".into(),
-                        temperature: Celsius::from(25.5),
-                        relative_humidity: Some(Fraction(0.55)),
-                        distance: None,
-                    }]
-                )
-                .expect("Formatting should work")
-            ),
-            format!(
+        test_format_metrics(
+            Format::Prometheus,
+            vec![Weather {
+                source: "org.example".into(),
+                coordinates: Coordinates {
+                    latitude: Coordinate::from(20.1_f64),
+                    longitude: Coordinate::from(10.01234_f64),
+                },
+                location: "My Name".into(),
+                city: "Some City".into(),
+                temperature: Celsius::from(25.5),
+                relative_humidity: Some(Fraction(0.55)),
+                distance: None,
+            }],
+            &format!(
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
+weather_temperature_celsius{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # HELP weather_relative_humidity_ratio prometheus-weathermen relative humidity.
 # TYPE weather_relative_humidity_ratio gauge
 # UNIT weather_relative_humidity_ratio ratio
-weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
-# EOF"##,
-                VERSION
-            )
+weather_relative_humidity_ratio{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
+# EOF"##
+            ),
         );
     }
 
     #[test]
     fn format_multiple() {
-        assert_str_eq!(
-            sort_output_deterministically(
-                &format_metrics(
-                    Format::Prometheus,
-                    vec![
-                        Weather {
-                            source: "org.example".into(),
-                            coordinates: Coordinates {
-                                latitude: Coordinate::from(20.1_f64),
-                                longitude: Coordinate::from(10.01234_f64),
-                            },
-                            location: "My Name".into(),
-                            city: "Some City".into(),
-                            temperature: Celsius::from(25.5),
-                            relative_humidity: Some(Fraction(0.55)),
-                            distance: None
-                        },
-                        Weather {
-                            source: "com.example".into(),
-                            coordinates: Coordinates {
-                                latitude: Coordinate::from(30.1_f64),
-                                longitude: Coordinate::from(20.01234_f64),
-                            },
-                            location: "Another Name".into(),
-                            city: "Another City".into(),
-                            temperature: Celsius::from(15.5),
-                            relative_humidity: Some(Fraction(0.75)),
-                            distance: None,
-                        }
-                    ]
-                )
-                .expect("Formatting should work")
-            ),
-            format!(
+        test_format_metrics(
+            Format::Prometheus,
+            vec![
+                Weather {
+                    source: "org.example".into(),
+                    coordinates: Coordinates {
+                        latitude: Coordinate::from(20.1_f64),
+                        longitude: Coordinate::from(10.01234_f64),
+                    },
+                    location: "My Name".into(),
+                    city: "Some City".into(),
+                    temperature: Celsius::from(25.5),
+                    relative_humidity: Some(Fraction(0.55)),
+                    distance: None,
+                },
+                Weather {
+                    source: "com.example".into(),
+                    coordinates: Coordinates {
+                        latitude: Coordinate::from(30.1_f64),
+                        longitude: Coordinate::from(20.01234_f64),
+                    },
+                    location: "Another Name".into(),
+                    city: "Another City".into(),
+                    temperature: Celsius::from(15.5),
+                    relative_humidity: Some(Fraction(0.75)),
+                    distance: None,
+                },
+            ],
+            &format!(
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{0}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 15.5
-weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
+weather_temperature_celsius{{version="{VERSION}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 15.5
+weather_temperature_celsius{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # HELP weather_relative_humidity_ratio prometheus-weathermen relative humidity.
 # TYPE weather_relative_humidity_ratio gauge
 # UNIT weather_relative_humidity_ratio ratio
-weather_relative_humidity_ratio{{version="{0}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 0.75
-weather_relative_humidity_ratio{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
-# EOF"##,
-                VERSION
-            )
+weather_relative_humidity_ratio{{version="{VERSION}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 0.75
+weather_relative_humidity_ratio{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
+# EOF"##
+            ),
         );
     }
     #[test]
     fn format_temperature_and_distance() {
-        assert_str_eq!(
-            sort_output_deterministically(
-                &format_metrics(
-                    Format::Prometheus,
-                    vec![Weather {
-                        source: "org.example".into(),
-                        coordinates: Coordinates {
-                            latitude: Coordinate::from(20.1_f64),
-                            longitude: Coordinate::from(10.01234_f64),
-                        },
-                        location: "My Name".into(),
-                        city: "Some City".into(),
-                        temperature: Celsius::from(25.5_f32),
-                        relative_humidity: None,
-                        distance: Some(100.1_f64.into())
-                    }]
-                )
-                .expect("Formatting should work")
-            ),
-            format!(
+        test_format_metrics(
+            Format::Prometheus,
+            vec![Weather {
+                source: "org.example".into(),
+                coordinates: Coordinates {
+                    latitude: Coordinate::from(20.1_f64),
+                    longitude: Coordinate::from(10.01234_f64),
+                },
+                location: "My Name".into(),
+                city: "Some City".into(),
+                temperature: Celsius::from(25.5_f32),
+                relative_humidity: None,
+                distance: Some(100.1_f64.into()),
+            }],
+            &format!(
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
+weather_temperature_celsius{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # HELP weather_station_distance_meters prometheus-weathermen weather station distance in meters.
 # TYPE weather_station_distance_meters gauge
 # UNIT weather_station_distance_meters meters
-weather_station_distance_meters{{version="{0}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 100.1
-# EOF"##,
-                VERSION
-            )
+weather_station_distance_meters{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 100.1
+# EOF"##
+            ),
         );
     }
 }
