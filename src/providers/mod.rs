@@ -15,6 +15,7 @@ use crate::providers::units::{Celsius, Meters, Ratio};
 use geo::{HaversineDistance, Point};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
 use std::vec::IntoIter;
@@ -71,13 +72,7 @@ pub struct Weather {
     pub relative_humidity: Option<Ratio>,
 }
 
-#[derive(Debug, Clone)]
-pub struct WeatherRequest<T> {
-    pub name: String,
-    pub query: T,
-}
-
-pub trait WeatherProvider: std::fmt::Debug {
+pub trait WeatherProvider: Debug {
     fn id(&self) -> &str;
 
     fn for_coordinates(
@@ -93,9 +88,15 @@ pub trait WeatherProvider: std::fmt::Debug {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct WeatherRequest<T> {
+    pub name: String,
+    pub query: T,
+}
+
 pub type HttpRequestCache = http_request::Cache;
 
-pub fn calculate_distance(left: &Coordinates, right: &Coordinates) -> Meters {
+fn calculate_distance(left: &Coordinates, right: &Coordinates) -> Meters {
     let dist: f64 = Point::new(left.latitude.clone().into(), left.longitude.clone().into())
         .haversine_distance(&Point::new(
             right.latitude.clone().into(),

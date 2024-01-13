@@ -1,13 +1,3 @@
-#![deny(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![warn(clippy::missing_const_for_fn)]
-#![warn(clippy::cargo)]
-#![warn(clippy::cargo_common_metadata)]
-#![warn(clippy::unwrap_used)]
-#![allow(clippy::no_effect_underscore_binding)]
-#![allow(clippy::ignored_unit_patterns)]
-#![allow(soft_unstable)]
 #![cfg_attr(feature = "nightly", feature(test))]
 
 use crate::config::{read, DEFAULT_CONFIG};
@@ -16,6 +6,7 @@ use clap::{arg, command, Parser};
 use rocket::{launch, Build, Rocket};
 use std::path::PathBuf;
 
+mod authentication;
 mod config;
 mod error;
 mod http_server;
@@ -25,7 +16,7 @@ mod providers;
 
 #[cfg(debug_assertions)]
 #[derive(Copy, Clone, Debug, Default)]
-pub struct DebugLevel;
+struct DebugLevel;
 
 #[cfg(debug_assertions)]
 impl clap_verbosity_flag::LogLevel for DebugLevel {
@@ -57,7 +48,7 @@ struct Args {
 ///
 /// Will panic if the log level cannot be parsed
 #[launch]
-pub async fn start_server() -> Rocket<Build> {
+async fn start_server() -> Rocket<Build> {
     let args = Args::parse();
 
     let log_level = args

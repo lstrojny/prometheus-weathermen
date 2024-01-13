@@ -47,7 +47,7 @@ impl From<Ratio> for f64 {
     fn from(value: Ratio) -> Self {
         match value {
             Ratio::Fraction(v) => v,
-            Ratio::Percentage(v) => v / 100.0,
+            Ratio::Percentage(v) => v / 100.0_f64,
         }
     }
 }
@@ -58,7 +58,7 @@ pub struct Coordinate(f64);
 
 impl PartialEq for Coordinate {
     fn eq(&self, other: &Self) -> bool {
-        (self.0 - other.0).abs() < 0.000_000_1
+        (self.0 - other.0).abs() < 0.000_000_1_f64
     }
 }
 

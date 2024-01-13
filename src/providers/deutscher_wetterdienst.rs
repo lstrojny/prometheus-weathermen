@@ -23,7 +23,7 @@ const STATION_LIST_URL: &str = concatcp!(BASE_URL, "/zehn_now_tu_Beschreibung_St
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DeutscherWetterdienst {
     #[serde(flatten)]
-    pub cache: Configuration,
+    cache: Configuration,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
@@ -42,8 +42,8 @@ fn strip_duplicate_spaces(data: &str) -> String {
     let mut prev_space = false;
 
     data.chars()
-        .filter(|c| {
-            let cur_space = *c == ' ';
+        .filter(|&c| {
+            let cur_space = c == ' ';
 
             if cur_space && prev_space {
                 return false;
@@ -56,27 +56,68 @@ fn strip_duplicate_spaces(data: &str) -> String {
         .collect()
 }
 
-fn parse_weather_station_list_csv(data: &str) -> Vec<WeatherStation> {
+fn disambiguate_multi_words(data: &str) -> String {
+    data.split('\n')
+        .enumerate()
+        .map(|(line_no, line)| {
+            if line_no == 0 || line_no == 1 {
+                line.to_owned()
+            } else {
+                disambiguate_multi_words_line(line)
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+#[derive(Copy, Clone)]
+enum Quote {
+    None,
+    Open,
+    Closed,
+}
+
+fn disambiguate_multi_words_line(orig_line: &str) -> String {
+    let mut orig_line_reversed = orig_line.trim().chars().rev().peekable();
+    let mut line = String::new();
+    let mut quote = Quote::None;
+    while let Some(cur_char) = orig_line_reversed.next() {
+        match (cur_char, orig_line_reversed.peek(), quote) {
+            (' ', Some(&next_char), Quote::None) if next_char != ' ' => {
+                line.push_str(" \"");
+                quote = Quote::Open;
+            }
+            (' ', Some(&next_char), Quote::Open) if next_char.is_ascii_digit() => {
+                line.push('"');
+                line.push(cur_char);
+                quote = Quote::Closed;
+            }
+            _ => line.push(cur_char),
+        }
+    }
+    line.chars().rev().collect()
+}
+
+fn parse_weather_station_list_csv(data: &str) -> anyhow::Result<Vec<WeatherStation>> {
     let stripped = strip_duplicate_spaces(data);
+    let processed = disambiguate_multi_words(&stripped);
 
     let reader = csv::ReaderBuilder::new()
         .delimiter(b' ')
-        .double_quote(false)
         .comment(Some(b'-'))
         .trim(Trim::All)
         .flexible(true)
-        .from_reader(stripped.as_bytes());
+        .from_reader(processed.as_bytes());
 
-    reader
+    Ok(reader
         .into_deserialize::<WeatherStation>()
-        .map(|m| m.expect("Should always succeed"))
-        .collect::<Vec<WeatherStation>>()
+        .collect::<Result<Vec<WeatherStation>, csv::Error>>()?)
 }
 
-fn find_closest_weather_station<'a>(
+fn find_closest_weather_station<'stations>(
     coords: &Coordinates,
-    weather_stations: &'a [WeatherStation],
-) -> anyhow::Result<&'a WeatherStation> {
+    weather_stations: &'stations [WeatherStation],
+) -> anyhow::Result<&'stations WeatherStation> {
     let point: Point<f64> = Point::new(
         coords.longitude.clone().into(),
         coords.latitude.clone().into(),
@@ -89,10 +130,13 @@ fn find_closest_weather_station<'a>(
     );
 
     match points.closest_point(&point) {
-        Closest::SinglePoint(point) | Closest::Intersection(point) => {
+        Closest::SinglePoint(closest_point) | Closest::Intersection(closest_point) => {
             let matching_station = weather_stations
                 .iter()
-                .find(|s| s.longitude == point.x().into() && s.latitude == point.y().into())
+                .find(|station| {
+                    station.longitude == closest_point.x().into()
+                        && station.latitude == closest_point.y().into()
+                })
                 .expect("Must be able to find matching weather station");
 
             Ok(matching_station)
@@ -123,10 +167,10 @@ fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
             file.name()
         );
 
-        let mut buf: String = String::new();
-        file.read_to_string(&mut buf)?;
+        let mut str_buf = String::new();
+        file.read_to_string(&mut str_buf)?;
 
-        return Ok(buf);
+        return Ok(str_buf);
     }
 
     Err(anyhow!("Could not find weather data file in ZIP archive"))
@@ -152,6 +196,7 @@ struct Measurement {
 
 mod minute_precision_date_format {
     use chrono::{DateTime, NaiveDateTime, Utc};
+    use serde::de::Error;
     use serde::{self, Deserialize, Deserializer};
 
     const FORMAT: &str = "%Y%m%d%H%M";
@@ -163,7 +208,7 @@ mod minute_precision_date_format {
         let s = String::deserialize(deserializer)?;
         NaiveDateTime::parse_from_str(&s, FORMAT)
             .map(|v| v.and_utc())
-            .map_err(serde::de::Error::custom)
+            .map_err(Error::custom)
     }
 }
 
@@ -218,9 +263,12 @@ impl WeatherProvider for DeutscherWetterdienst {
             &Method::GET,
             &Url::parse(STATION_LIST_URL)?,
             |body| {
-                let str: String = body.iter().map(|&c| c as char).collect();
+                let str: String = body
+                    .iter()
+                    .filter_map(|&c| char::from_u32(c.into()))
+                    .collect();
 
-                Ok(parse_weather_station_list_csv(&str))
+                parse_weather_station_list_csv(&str)
             },
         ))?;
 
@@ -230,10 +278,10 @@ impl WeatherProvider for DeutscherWetterdienst {
             reqwest_cached_measurement_csv(cache, client, &closest_station.station_id)?;
         let measurements = parse_measurement_data_csv(&measurement_csv);
 
-        match &measurements[..] {
+        match &*measurements {
             [.., latest_measurement] => {
                 debug!(
-                    "Using latest measurement from {:?}: {:?}",
+                    "Using latest measurement from {}: {:?}",
                     latest_measurement.time,
                     latest_measurement.clone()
                 );
@@ -281,14 +329,24 @@ mod tests {
             assert_eq!(
                 parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
-00044 20070209 20230111             44     52.9336    8.2370 Großenkneten                             Niedersachsen                                                                                     \n\
-"),
+00044 20070209 20230111             44     52.7553    7.4815 Gro\u{df} Ber\u{df}en                             Niedersachsen                                                                                     \n\
+").expect("Parsing works"),
                 vec![WeatherStation {
                     station_id: "00044".into(),
-                    name: "Großenkneten".into(),
-                    latitude: 52.9336.into(),
-                    longitude: 8.2370.into(),
+                    name: "Gro\u{df} Ber\u{df}en".into(),
+                    latitude: 52.7553_f64.into(),
+                    longitude: 7.4815_f64.into(),
                 }]
+            );
+        }
+
+        #[test]
+        fn parse_error() {
+            assert!(
+                parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
+broken\n\
+").expect_err("Will fail to parse").to_string().contains("CSV deserialize error: record 1"),
             );
         }
     }
@@ -305,30 +363,30 @@ mod tests {
             assert_eq!(
                 find_closest_weather_station(
                     &Coordinates {
-                        latitude: 48.11591.into(),
-                        longitude: 11.570_906.into(),
+                        latitude: 48.11591_f64.into(),
+                        longitude: 11.570_906_f64.into(),
                     },
                     &[
                         WeatherStation {
                             station_id: "03379".into(),
-                            name: "München-Stadt".into(),
-                            latitude: 48.1632.into(),
-                            longitude: 11.5429.into(),
+                            name: "M\u{fc}nchen-Stadt".into(),
+                            latitude: 48.1632_f64.into(),
+                            longitude: 11.5429_f64.into(),
                         },
                         WeatherStation {
                             station_id: "01262".into(),
-                            name: "München-Flughafen".into(),
-                            latitude: 48.3477.into(),
-                            longitude: 11.8134.into(),
+                            name: "M\u{fc}nchen-Flughafen".into(),
+                            latitude: 48.3477_f64.into(),
+                            longitude: 11.8134_f64.into(),
                         },
                     ]
                 )
                 .expect("Should find something"),
                 &WeatherStation {
                     station_id: "03379".into(),
-                    name: "München-Stadt".into(),
-                    latitude: 48.1632.into(),
-                    longitude: 11.5429.into(),
+                    name: "M\u{fc}nchen-Stadt".into(),
+                    latitude: 48.1632_f64.into(),
+                    longitude: 11.5429_f64.into(),
                 }
             );
         }
@@ -368,12 +426,12 @@ mod tests {
         #[test]
         fn parse_example() {
             assert_eq!(
-                &parse_measurement_data_csv(
+                &*parse_measurement_data_csv(
                     &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
             379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor"
-                        .to_string(),
-                )[..],
-                &[Measurement {
+                        .to_owned(),
+                ),
+                [Measurement {
                     _station_id: "379".into(),
                     _atmospheric_pressure: "-999".into(),
                     _dew_point_temperature_200_centimeters: 2.4.into(),

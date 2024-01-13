@@ -14,9 +14,9 @@ type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Meteoblue {
-    pub api_key: String,
+    api_key: String,
     #[serde(flatten)]
-    pub cache: Configuration,
+    cache: Configuration,
 }
 
 const SOURCE_URI: &str = "com.meteoblue";

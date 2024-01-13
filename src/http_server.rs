@@ -1,6 +1,5 @@
 use crate::config::NAME;
-use log::{debug, error, info, trace};
-use moka::sync::{Cache, CacheBuilder};
+use log::{error, info, trace};
 use once_cell::sync::Lazy;
 use rocket::http::{Accept, ContentType, Header, MediaType, QMediaType, Status};
 use rocket::{get, routes, Build, Either, Responder, Rocket, State};
@@ -8,8 +7,9 @@ use rocket_basicauth::BasicAuth;
 use std::cmp::Ordering;
 
 use crate::config::ProviderTasks;
-use crate::config::{get_provider_tasks, Config, CredentialsStore};
+use crate::config::{get_provider_tasks, Config};
 
+use crate::authentication::{maybe_authenticate, CredentialsStore, Denied};
 use crate::error::exit_if_handle_fatal;
 use crate::prometheus::{format_metrics, Format};
 use crate::providers::Weather;
@@ -70,7 +70,7 @@ async fn serve_metrics(
     for task in unscheduled_tasks.iter().cloned() {
         join_set.spawn(task::spawn_blocking(move || {
             info!(
-                "Requesting weather data for {:?} from {:?} ({:?})",
+                "Requesting weather data for {} from {} ({:?})",
                 task.request.name,
                 task.provider.id(),
                 task.request.query,
@@ -120,17 +120,17 @@ fn auth_error_to_response<T>(
 
 #[derive(Responder, Debug, PartialEq, Eq)]
 #[response()]
-pub struct MetricsResponse {
+struct MetricsResponse {
     response: (Status, String),
     content_type: ContentType,
 }
 
 impl MetricsResponse {
-    fn new(status: Status, content_type: Format, response: String) -> Self {
-        let content_type = if status.class().is_success() && content_type == Format::OpenMetrics {
-            get_openmetrics_content_type()
+    fn new(status: Status, format: Format, response: String) -> Self {
+        let content_type = if status.class().is_success() && format == Format::OpenMetrics {
+            OPENMETRICS_CONTENT_TYPE.clone()
         } else {
-            get_text_plain_content_type()
+            TEXT_PLAIN_CONTENT_TYPE.clone()
         };
 
         Self {
@@ -142,7 +142,7 @@ impl MetricsResponse {
 
 #[derive(Responder, Debug, PartialEq, Eq)]
 #[response(content_type = "text/plain; charset=utf-8", status = 401)]
-pub struct UnauthorizedResponse {
+struct UnauthorizedResponse {
     response: &'static str,
     authenticate: Header<'static>,
 }
@@ -161,7 +161,7 @@ impl UnauthorizedResponse {
 
 #[derive(Responder, Debug, PartialEq, Eq)]
 #[response(content_type = "text/plain; charset=utf-8", status = 403)]
-pub struct ForbiddenResponse {
+struct ForbiddenResponse {
     response: &'static str,
 }
 
@@ -171,79 +171,6 @@ impl ForbiddenResponse {
             response: "Access denied. Invalid credentials",
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Granted {
-    NotRequired,
-    Succeeded,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Denied {
-    Unauthorized,
-    Forbidden,
-}
-
-pub fn maybe_authenticate(
-    credentials_store: &Option<CredentialsStore>,
-    credentials_presented: &Option<BasicAuth>,
-) -> Result<Granted, Denied> {
-    match (credentials_store, credentials_presented) {
-        (Some(credentials_store), Some(credentials_presented)) => {
-            authenticate(credentials_store, credentials_presented)
-        }
-        (Some(_), None) => {
-            trace!("No credentials presented. Unauthorized");
-            Err(Denied::Unauthorized)
-        }
-        (None, _) => {
-            trace!("No credentials store configured, skipping authentication");
-            Ok(Granted::NotRequired)
-        }
-    }
-}
-
-static AUTHENTICATION_CACHE: Lazy<Cache<(String, String), Result<Granted, Denied>>> =
-    Lazy::new(|| CacheBuilder::new(10u64.pow(6)).build());
-
-fn authenticate(credentials: &CredentialsStore, auth: &BasicAuth) -> Result<Granted, Denied> {
-    credentials
-        .iter()
-        .find_map(|(username, hash)| {
-            (username == &auth.username).then(|| {
-                AUTHENTICATION_CACHE
-                    .entry((auth.username.clone(), auth.password.clone()))
-                    .or_insert_with_if(
-                        || match bcrypt::verify(auth.password.as_bytes(), &hash.to_string()) {
-                            Ok(r) => {
-                                if r {
-                                    debug!("Username {username:?} successfully authenticated");
-                                    Ok(Granted::Succeeded)
-                                } else {
-                                    debug!("Invalid password for {username:?}");
-                                    Err(Denied::Forbidden)
-                                }
-                            }
-                            Err(e) => {
-                                error!("Error verifying bcrypt hash for {username:?}: {e:?}");
-                                Err(Denied::Forbidden)
-                            }
-                        },
-                        Result::is_err,
-                    )
-                    .into_value()
-            })
-        })
-        .unwrap_or_else(|| {
-            // Prevent timing attacks that could leak that a user does not exist.
-            // If the user was not found above, make sure to run at least one bcrypt operation to keep the time constant.
-            let _prevent_leak = bcrypt::verify(
-                auth.password.as_bytes(),
-                credentials.default_hash().to_string().as_str(),
-            );
-            Err(Denied::Forbidden)
-        })
 }
 
 fn sort_media_types_by_priority(accept: &Accept) -> Vec<&QMediaType> {
@@ -275,25 +202,18 @@ const fn get_content_type_params(version: &str) -> [(&str, &str); 2] {
     [("charset", "utf-8"), ("version", version)]
 }
 
-fn get_openmetrics_content_type() -> ContentType {
+static OPENMETRICS_CONTENT_TYPE: Lazy<ContentType> = Lazy::new(|| {
     ContentType::new("application", "openmetrics-text")
         .with_params(get_content_type_params("1.0.0"))
-}
+});
 
-fn get_text_plain_content_type() -> ContentType {
-    ContentType::new("text", "plain").with_params(get_content_type_params("0.0.4"))
-}
+static TEXT_PLAIN_CONTENT_TYPE: Lazy<ContentType> =
+    Lazy::new(|| ContentType::new("text", "plain").with_params(get_content_type_params("0.0.4")));
 
-static MEDIA_TYPE_FORMATS: Lazy<Vec<(MediaType, Format)>> = Lazy::new(|| {
+static MEDIA_TYPE_FORMATS: Lazy<Vec<(&MediaType, Format)>> = Lazy::new(|| {
     vec![
-        (
-            get_openmetrics_content_type().media_type().clone(),
-            Format::OpenMetrics,
-        ),
-        (
-            get_text_plain_content_type().media_type().clone(),
-            Format::Prometheus,
-        ),
+        (OPENMETRICS_CONTENT_TYPE.media_type(), Format::OpenMetrics),
+        (TEXT_PLAIN_CONTENT_TYPE.media_type(), Format::Prometheus),
     ]
 });
 
@@ -319,160 +239,6 @@ fn media_type_matches(left: &MediaType, right: &MediaType) -> bool {
 
 #[cfg(test)]
 mod tests {
-    mod authentication {
-        use crate::config::CredentialsStore;
-        use crate::http_server::{maybe_authenticate, Denied, Granted};
-        use pretty_assertions::assert_eq;
-        use rocket_basicauth::BasicAuth;
-
-        const SECRET_HASH: &str = "$2y$04$RLR0zzNVe3K8eJg/NaRUxuWvIEXys0BwG0SnopFZ0K12Xei7HGq2i";
-
-        #[test]
-        fn false_if_no_authentication_required() {
-            assert_eq!(maybe_authenticate(&None, &None), Ok(Granted::NotRequired));
-        }
-
-        #[test]
-        fn unauthorized_if_no_auth_information_provided() {
-            assert_eq!(
-                maybe_authenticate(&Some(CredentialsStore::default()), &None),
-                Err(Denied::Unauthorized)
-            );
-        }
-
-        #[test]
-        fn forbidden_if_username_not_found() {
-            assert_eq!(
-                maybe_authenticate(
-                    &Some(CredentialsStore::default()),
-                    &Some(BasicAuth {
-                        username: "joanna".into(),
-                        password: "secret".into()
-                    })
-                ),
-                Err(Denied::Forbidden)
-            );
-        }
-
-        #[test]
-        fn forbidden_if_incorrect_password() {
-            assert_eq!(
-                maybe_authenticate(
-                    &Some(CredentialsStore::from([(
-                        "joanna".into(),
-                        SECRET_HASH.to_string().into()
-                    )])),
-                    &Some(BasicAuth {
-                        username: "joanna".into(),
-                        password: "incorrect".into()
-                    })
-                ),
-                Err(Denied::Forbidden)
-            );
-        }
-
-        #[test]
-        fn forbidden_even_if_fakepassword() {
-            assert_eq!(
-                maybe_authenticate(
-                    &Some(CredentialsStore::from([(
-                        "joanna".to_string().into(),
-                        SECRET_HASH.to_string().into()
-                    )])),
-                    &Some(BasicAuth {
-                        username: "joanna".into(),
-                        password: "fakepassword".into()
-                    })
-                ),
-                Err(Denied::Forbidden)
-            );
-        }
-
-        #[test]
-        fn granted_if_authentication_successful() {
-            assert_eq!(
-                maybe_authenticate(
-                    &Some(CredentialsStore::from([(
-                        "joanna".to_string().into(),
-                        SECRET_HASH.to_string().into()
-                    )])),
-                    &Some(BasicAuth {
-                        username: "joanna".into(),
-                        password: "secret".into(),
-                    }),
-                ),
-                Ok(Granted::Succeeded)
-            );
-        }
-
-        #[cfg(feature = "nightly")]
-        mod benchmark {
-            extern crate test;
-            use crate::config::CredentialsStore;
-            use crate::http_server::tests::authentication::SECRET_HASH;
-            use crate::http_server::{authenticate, AUTHENTICATION_CACHE};
-            use rocket_basicauth::BasicAuth;
-            use test::Bencher;
-
-            fn credentials_store() -> CredentialsStore {
-                CredentialsStore::from([("joanna".into(), SECRET_HASH.to_string().into())])
-            }
-
-            fn setup_benchmark_run() {
-                credentials_store().default_hash();
-            }
-
-            fn setup_benchmark_iteration() {
-                AUTHENTICATION_CACHE.invalidate_all();
-            }
-
-            #[bench]
-            fn bench_user_not_found(b: &mut Bencher) {
-                setup_benchmark_run();
-                b.iter(|| {
-                    setup_benchmark_iteration();
-                    authenticate(
-                        &credentials_store(),
-                        &BasicAuth {
-                            username: "unknown".into(),
-                            password: "secret".into(),
-                        },
-                    )
-                });
-            }
-
-            #[bench]
-            fn bench_invalid_password(b: &mut Bencher) {
-                setup_benchmark_run();
-                b.iter(|| {
-                    setup_benchmark_iteration();
-                    authenticate(
-                        &credentials_store(),
-                        &BasicAuth {
-                            username: "joanna".into(),
-                            password: "incorrect".into(),
-                        },
-                    )
-                })
-            }
-
-            #[bench]
-            fn bench_granted(b: &mut Bencher) {
-                setup_benchmark_run();
-                b.iter(|| {
-                    setup_benchmark_iteration();
-                    authenticate(
-                        &credentials_store(),
-                        &BasicAuth {
-                            username: "joanna".into(),
-                            password: "secret".into(),
-                        },
-                    )
-                })
-            }
-        }
-    }
-
     mod content_negotiation {
         use crate::http_server::{get_metrics_format, sort_media_types_by_priority};
         use crate::prometheus::Format;
