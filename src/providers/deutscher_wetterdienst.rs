@@ -66,7 +66,7 @@ fn disambiguate_multi_words(data: &str) -> String {
                 disambiguate_multi_words_line(line)
             }
         })
-        .collect::<Vec<String>>()
+        .collect::<Vec<_>>()
         .join("\n")
 }
 
@@ -111,7 +111,7 @@ fn parse_weather_station_list_csv(data: &str) -> anyhow::Result<Vec<WeatherStati
 
     Ok(reader
         .into_deserialize::<WeatherStation>()
-        .collect::<Result<Vec<WeatherStation>, csv::Error>>()?)
+        .collect::<Result<_, _>>()?)
 }
 
 fn find_closest_weather_station<'stations>(
@@ -137,7 +137,7 @@ fn find_closest_weather_station<'stations>(
                     station.longitude == closest_point.x().into()
                         && station.latitude == closest_point.y().into()
                 })
-                .expect("Must be able to find matching weather station");
+                .ok_or_else(|| anyhow!("Could not find matching station"))?;
 
             Ok(matching_station)
         }
@@ -212,17 +212,16 @@ mod minute_precision_date_format {
     }
 }
 
-fn parse_measurement_data_csv(data: &String) -> Vec<Measurement> {
+fn parse_measurement_data_csv(data: &String) -> anyhow::Result<Vec<Measurement>> {
     let reader = csv::ReaderBuilder::new()
         .delimiter(b';')
         .double_quote(false)
         .trim(Trim::All)
         .from_reader(data.as_bytes());
 
-    reader
+    Ok(reader
         .into_deserialize::<Measurement>()
-        .map(|m| m.expect("Should always succeed"))
-        .collect::<Vec<Measurement>>()
+        .collect::<Result<_, _>>()?)
 }
 
 fn reqwest_cached_measurement_csv(
@@ -276,7 +275,7 @@ impl WeatherProvider for DeutscherWetterdienst {
         trace!("Found closest weather station {:?}", closest_station);
         let measurement_csv =
             reqwest_cached_measurement_csv(cache, client, &closest_station.station_id)?;
-        let measurements = parse_measurement_data_csv(&measurement_csv);
+        let measurements = parse_measurement_data_csv(&measurement_csv)?;
 
         match &*measurements {
             [.., latest_measurement] => {
@@ -430,7 +429,8 @@ broken\n\
                     &"STATIONS_ID;MESS_DATUM;  QN;PP_10;TT_10;TM5_10;RF_10;TD_10;eor\n\
             379;202301120000;    2;   -999;   5.1;   2.5;  82.6;   2.4;eor"
                         .to_owned(),
-                ),
+                )
+                .expect("Parsing works"),
                 [Measurement {
                     _station_id: "379".into(),
                     _atmospheric_pressure: "-999".into(),
