@@ -78,11 +78,7 @@ impl WeatherProvider for Meteoblue {
         Ok(Weather {
             source: SOURCE_URI.into(),
             location: request.name.clone(),
-            city: if response.metadata.name.is_empty() {
-                request.name.clone()
-            } else {
-                response.metadata.name
-            },
+            city: Some(response.metadata.name).filter(String::is_empty),
             coordinates: response.metadata.coordinates,
             distance: Some(distance),
             temperature: response.data_current.temperature,

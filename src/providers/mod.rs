@@ -2,6 +2,7 @@ mod deutscher_wetterdienst;
 mod http_request;
 mod meteoblue;
 mod nogoodnik;
+mod open_meteo;
 mod open_weather;
 mod tomorrow;
 pub mod units;
@@ -9,6 +10,7 @@ pub mod units;
 use crate::providers::deutscher_wetterdienst::DeutscherWetterdienst;
 use crate::providers::meteoblue::Meteoblue;
 use crate::providers::nogoodnik::Nogoodnik;
+use crate::providers::open_meteo::OpenMeteo;
 use crate::providers::open_weather::OpenWeather;
 use crate::providers::tomorrow::Tomorrow;
 use crate::providers::units::{Celsius, Meters, Ratio};
@@ -27,6 +29,7 @@ pub struct Providers {
     meteoblue: Option<Meteoblue>,
     tomorrow: Option<Tomorrow>,
     deutscher_wetterdienst: Option<DeutscherWetterdienst>,
+    open_meteo: Option<OpenMeteo>,
     nogoodnik: Option<Nogoodnik>,
 }
 
@@ -53,6 +56,10 @@ impl IntoIterator for Providers {
             vec.push(Arc::new(provider));
         }
 
+        if let Some(provider) = self.open_meteo {
+            vec.push(Arc::new(provider));
+        }
+
         if let Some(provider) = self.nogoodnik {
             vec.push(Arc::new(provider));
         }
@@ -65,7 +72,7 @@ impl IntoIterator for Providers {
 pub struct Weather {
     pub location: String,
     pub source: String,
-    pub city: String,
+    pub city: Option<String>,
     pub coordinates: Coordinates,
     pub distance: Option<Meters>,
     pub temperature: Celsius,

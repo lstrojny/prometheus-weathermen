@@ -64,9 +64,9 @@ impl WeatherProvider for Tomorrow {
         ))?;
 
         Ok(Weather {
-            source: SOURCE_URI.into(),
             location: request.name.clone(),
-            city: request.name.clone(),
+            source: SOURCE_URI.into(),
+            city: None,
             coordinates: request.query.clone(),
             distance: None,
             temperature: response.data.values.temperature,

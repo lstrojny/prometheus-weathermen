@@ -23,6 +23,7 @@ The following services are implemented as providers. Each configured provider is
 | [OpenWeather](https://openweathermap.org/)    | Medium     | Worldwide | ✅                 | ✅                 | Yes                   |
 | [tomorrow.io](https://www.tomorrow.io/)       | High       | Worldwide | ✅                 | ❌                 | Yes                   |
 | [Deutscher Wetterdienst](https://www.dwd.de/) | Medium     | Germany   | ✅                 | ✅                 | No                    |
+| [Open-Meteo](https://open-meteo.com/)         | High       | Worldwide | ✅                 | ❌                 | No                    |
 
 You need to register an account for those providers that require an API key.
 

@@ -47,8 +47,8 @@ pub fn format_metrics(_format: Format, weathers: Vec<Weather>) -> anyhow::Result
         let labels = Labels {
             version: VERSION.into(),
             source: weather.source,
-            location: weather.location,
-            city: weather.city,
+            location: weather.location.clone(),
+            city: weather.city.unwrap_or_else(String::new),
             latitude: weather.coordinates.latitude.to_string(),
             longitude: weather.coordinates.longitude.to_string(),
         };
@@ -153,7 +153,7 @@ mod tests {
                 longitude: Coordinate::from(10.01234_f64),
             },
             location: "My Name".into(),
-            city: "Some City".into(),
+            city: Some("Some City".into()),
             temperature: Celsius::from(25.5),
             relative_humidity,
             distance,
@@ -225,7 +225,7 @@ weather_station_distance_meters{{version="{VERSION}",source="org.example",locati
                         longitude: Coordinate::from(10.01234_f64),
                     },
                     location: "My Name".into(),
-                    city: "Some City".into(),
+                    city: Some("Some City".into()),
                     temperature: Celsius::from(25.5),
                     relative_humidity: Some(Fraction(0.55)),
                     distance: None,
@@ -237,7 +237,7 @@ weather_station_distance_meters{{version="{VERSION}",source="org.example",locati
                         longitude: Coordinate::from(20.01234_f64),
                     },
                     location: "Another Name".into(),
-                    city: "Another City".into(),
+                    city: None,
                     temperature: Celsius::from(15.5),
                     relative_humidity: Some(Fraction(0.75)),
                     distance: None,
@@ -247,12 +247,12 @@ weather_station_distance_meters{{version="{VERSION}",source="org.example",locati
                 r##"# HELP weather_temperature_celsius prometheus-weathermen temperature.
 # TYPE weather_temperature_celsius gauge
 # UNIT weather_temperature_celsius celsius
-weather_temperature_celsius{{version="{VERSION}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 15.5
+weather_temperature_celsius{{version="{VERSION}",source="com.example",location="Another Name",city="",latitude="30.1000000",longitude="20.0123400"}} 15.5
 weather_temperature_celsius{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 25.5
 # HELP weather_relative_humidity_ratio prometheus-weathermen relative humidity.
 # TYPE weather_relative_humidity_ratio gauge
 # UNIT weather_relative_humidity_ratio ratio
-weather_relative_humidity_ratio{{version="{VERSION}",source="com.example",location="Another Name",city="Another City",latitude="30.1000000",longitude="20.0123400"}} 0.75
+weather_relative_humidity_ratio{{version="{VERSION}",source="com.example",location="Another Name",city="",latitude="30.1000000",longitude="20.0123400"}} 0.75
 weather_relative_humidity_ratio{{version="{VERSION}",source="org.example",location="My Name",city="Some City",latitude="20.1000000",longitude="10.0123400"}} 0.55
 # EOF"##
             ),
