@@ -37,7 +37,7 @@ features = []
 default-features = false
 
 [dependencies.figment]
-version = "0.10.13"
+version = "0.10.14"
 features = ["toml", "env"]
 
 [dependencies.geo]
