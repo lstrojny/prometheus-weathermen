@@ -51,6 +51,18 @@ longitude = 14.435965
 # refresh_interval = "10min"
 
 
+# [provider.open_meteo]
+#
+# A provider using open-meteo.com
+#
+# API key for open-meteo.com (optional)
+# api_key = "customer-1234567890"
+#
+# Configure how often weather information should be refreshed from this provider . Default is 15 minutes
+# Format: 15days, 2min, 10s. Can also be combined: 1hour 30min
+# refresh_interval = "10min"
+
+
 # [provider.nogoodnik]
 #
 # A provider that always fails (for robustness testing)

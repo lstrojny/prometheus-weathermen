@@ -67,7 +67,7 @@ impl WeatherProvider for OpenWeather {
         Ok(Weather {
             source: SOURCE_URI.into(),
             location: request.name.clone(),
-            city: response.name,
+            city: Some(response.name),
             coordinates: response.coord,
             distance: Some(distance),
             temperature: response.main.temp.to_celsius(),

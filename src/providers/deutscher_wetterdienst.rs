@@ -295,7 +295,7 @@ impl WeatherProvider for DeutscherWetterdienst {
                 Ok(Weather {
                     source: SOURCE_URI.into(),
                     location: request.name.clone(),
-                    city: closest_station.name.clone(),
+                    city: Some(closest_station.name.clone()),
                     coordinates,
                     distance: Some(distance),
                     temperature: latest_measurement.temperature_200_centimers,
