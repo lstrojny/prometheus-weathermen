@@ -45,6 +45,7 @@
           packages = [
             rust-env
             cargo-unused-imports
+            pkgs.cargo-release
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
             pkgs.darwin.apple_sdk.frameworks.CoreServices
