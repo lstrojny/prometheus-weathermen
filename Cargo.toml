@@ -72,8 +72,7 @@ version = "0.5.0"
 features = ["tls"]
 
 [dependencies.rocket-basicauth]
-git = "https://github.com/Owez/rocket-basicauth.git"
-rev = "refs/pull/8/head"
+version = "3.0.0"
 features = []
 
 [dependencies.serde]

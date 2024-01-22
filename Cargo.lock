@@ -1758,8 +1758,9 @@ dependencies = [
 
 [[package]]
 name = "rocket-basicauth"
-version = "2.1.2"
-source = "git+https://github.com/Owez/rocket-basicauth.git?rev=refs/pull/8/head#4a80bda4968bba01e2488ddbf9d99a5271c5df62"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28f37ecfc0824ebd4a4a9b9486770fb7a8bef5c703881f4e32dc7cc9ce8cd9f"
 dependencies = [
  "base64 0.13.1",
  "log",
