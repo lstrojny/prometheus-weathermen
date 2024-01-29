@@ -76,7 +76,7 @@ version = "3.0.0"
 features = []
 
 [dependencies.serde]
-version = "1.0.195"
+version = "1.0.196"
 features = []
 
 [dependencies.serde_json]
