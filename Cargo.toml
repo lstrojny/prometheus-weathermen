@@ -123,15 +123,15 @@ strip = true
 [lints.clippy]
 no_effect_underscore_binding = "allow"
 ignored_unit_patterns = "allow"
-all = "deny"
-pedantic = "deny"
-nursery = "deny"
-perf = "deny"
-style = "deny"
-complexity = "deny"
-correctness = "deny"
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+style = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+cargo =  { level = "warn", priority = -1 }
 missing_const_for_fn = "warn"
-cargo = "warn"
 cargo_common_metadata = "warn"
 absolute_paths = "deny"
 alloc_instead_of_core = "deny"
