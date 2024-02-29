@@ -46,7 +46,7 @@ features = []
 default-features = false
 
 [dependencies.log]
-version = "0.4.20"
+version = "0.4.21"
 default-features = false
 
 [dependencies.moka]
