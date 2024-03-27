@@ -23,7 +23,7 @@ sha2 = "0.10.8"
 toml = "0.8.12"
 
 [dependencies.chrono]
-version = "0.4.35"
+version = "0.4.37"
 features = ["serde"]
 default-features = false
 
