@@ -64,7 +64,7 @@ version = "0.10.64"
 features = ["vendored"]
 
 [dependencies.reqwest]
-version = "0.12.1"
+version = "0.12.3"
 features = ["json", "blocking"]
 
 [dependencies.rocket]
