@@ -85,7 +85,7 @@ features = []
 default-features = false
 
 [dependencies.simple_logger]
-version = "4.3.0"
+version = "5.0.0"
 features = ["time", "timestamps", "colored", "colors"]
 default-features = false
 
