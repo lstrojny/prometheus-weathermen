@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/lstrojny/prometheus-weathermen"
 
 [dependencies]
-anyhow = "1.0.84"
+anyhow = "1.0.86"
 bcrypt = "0.15.1"
 clap-verbosity-flag = "2.2.0"
 const_format = "0.2.32"
