@@ -3002,9 +3002,9 @@ checksum = "63381fa6624bf92130a6b87c0d07380116f80b565c42cf0d754136f0238359ef"
 
 [[package]]
 name = "zip"
-version = "2.0.0"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fccb210625924ecbbe92f9bb497d04b167b64fe5540cec75f10b16e0c51ee92b"
+checksum = "098d5d7737fb0b70814faa73c17df84f047d38dd31d13bbf2ec3fb354b5abf45"
 dependencies = [
  "arbitrary",
  "crc32fast",
@@ -3012,6 +3012,7 @@ dependencies = [
  "displaydoc",
  "flate2",
  "indexmap",
+ "memchr",
  "thiserror",
  "zopfli",
 ]
