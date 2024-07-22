@@ -60,7 +60,7 @@ features = []
 default-features = false
 
 [dependencies.openssl]
-version = "0.10.64"
+version = "0.10.66"
 features = ["vendored"]
 
 [dependencies.reqwest]
