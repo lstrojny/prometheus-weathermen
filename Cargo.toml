@@ -90,7 +90,7 @@ features = ["time", "timestamps", "colored", "colors"]
 default-features = false
 
 [dependencies.tokio]
-version = "1.37.0"
+version = "1.39.2"
 features = []
 default-features = false
 
