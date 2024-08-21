@@ -7,20 +7,24 @@ keywords = ["prometheus", "prometheus-exporter", "weather", "monitoring"]
 categories = ["command-line-utilities"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/lstrojny/prometheus-weathermen"
+rust-version = " 1.80.0"
 
 [dependencies]
 anyhow = "1.0.86"
 bcrypt = "0.15.1"
-clap-verbosity-flag = "2.2.0"
+clap-verbosity-flag = "2.2.1"
 const_format = "0.2.32"
 csv = "1.3.0"
-derive_more = "0.99.17"
 hex = "0.4.3"
 hmac = "0.12.1"
 humantime-serde = "1.1.1"
 prometheus-client = "0.22.2"
 sha2 = "0.10.8"
 toml = "0.8.13"
+
+[dependencies.derive_more]
+version = "1.0.0"
+features = ["from", "display", "constructor", "into"]
 
 [dependencies.chrono]
 version = "0.4.38"
@@ -64,7 +68,7 @@ version = "0.10.64"
 features = ["vendored"]
 
 [dependencies.reqwest]
-version = "0.12.4"
+version = "0.12.7"
 features = ["json", "blocking"]
 
 [dependencies.rocket]
@@ -95,7 +99,7 @@ features = []
 default-features = false
 
 [dependencies.zip]
-version = "2.0.0"
+version = "2.2.0"
 features = ["deflate-miniz"]
 default-features = false
 
@@ -123,17 +127,17 @@ strip = true
 [lints.clippy]
 no_effect_underscore_binding = "allow"
 ignored_unit_patterns = "allow"
-all = { level = "deny", priority = -1 }
-pedantic = { level = "deny", priority = -1 }
-nursery = { level = "deny", priority = -1 }
-perf = { level = "deny", priority = -1 }
-style = { level = "deny", priority = -1 }
-complexity = { level = "deny", priority = -1 }
-correctness = { level = "deny", priority = -1 }
-cargo =  { level = "warn", priority = -1 }
+all = { level = "deny", priority = 1 }
+pedantic = { level = "deny", priority = 1 }
+nursery = { level = "deny", priority = 1 }
+perf = { level = "deny", priority = 1 }
+style = { level = "deny", priority = 1 }
+complexity = { level = "deny", priority = 1 }
+correctness = { level = "deny", priority = 1 }
 missing_const_for_fn = "warn"
+cargo = { level = "warn", priority = 1 }
 cargo_common_metadata = "warn"
-absolute_paths = "deny"
+absolute_paths = "warn" # FIXME: broken in nightly, should be deny
 alloc_instead_of_core = "deny"
 allow_attributes_without_reason = "deny"
 arithmetic_side_effects = "deny"

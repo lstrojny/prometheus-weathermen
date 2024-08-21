@@ -13,7 +13,7 @@ impl ToCelsius for Kelvin {
 }
 
 #[derive(Deserialize, Debug, Copy, Clone, From, Into, PartialEq)]
-#[into(types(f64))]
+#[into(f64)]
 pub struct Celsius(f32);
 
 const CELSIUS_ABSOLUTE_ZERO: f32 = -273.15;
@@ -57,7 +57,7 @@ impl From<Ratio> for f64 {
 }
 
 #[derive(Serialize, Deserialize, From, Into, Debug, Clone, Display)]
-#[display(fmt = "{_0:.7}")]
+#[display("{_0:.7}")]
 pub struct Coordinate(f64);
 
 impl PartialEq for Coordinate {
