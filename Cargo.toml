@@ -84,7 +84,7 @@ version = "1.0.202"
 features = []
 
 [dependencies.serde_json]
-version = "1.0.117"
+version = "1.0.127"
 features = []
 default-features = false
 
