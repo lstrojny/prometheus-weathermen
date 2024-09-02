@@ -6,11 +6,20 @@
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, darwin, rust-overlay, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      darwin,
+      rust-overlay,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
@@ -38,24 +47,31 @@
             homepage = "https://github.com/TimonPost/cargo-unused-features";
           };
         };
-        rust-env = pkgs.rust-bin.selectLatestNightlyWith
-          (toolchain: toolchain.default.override { extensions = [ "rust-src" ]; });
-      in {
-        devShell = pkgs.mkShell {
-          packages = [
-            rust-env
-            cargo-unused-imports
-            pkgs.cargo-release
-            pkgs.darwin.apple_sdk.frameworks.Security
-            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-            pkgs.darwin.apple_sdk.frameworks.CoreServices
-            pkgs.openssl
-            pkgs.pkg-config
-          ];
-          shellHook = ''
-            echo "Toolchain: ${pkgs.lib.getBin rust-env}/bin"
-            echo " rust-std: ${pkgs.lib.getLib rust-env}/lib/rustlib/src/rust/library"
-          '';
+        configureRust = toolchain: toolchain.default.override { extensions = [ "rust-src" ]; };
+        createRustEnv =
+          rust-env:
+          (pkgs.mkShell {
+            packages = [
+              rust-env
+              cargo-unused-imports
+              pkgs.cargo-release
+              pkgs.darwin.apple_sdk.frameworks.Security
+              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+              pkgs.darwin.apple_sdk.frameworks.CoreServices
+              pkgs.openssl
+              pkgs.pkg-config
+            ];
+            shellHook = ''
+              echo "Toolchain: ${pkgs.lib.getBin rust-env}/bin"
+              echo " rust-std: ${pkgs.lib.getLib rust-env}/lib/rustlib/src/rust/library"
+            '';
+          });
+      in
+      {
+        devShells = {
+          default = createRustEnv (pkgs.rust-bin.selectLatestNightlyWith configureRust);
+          stable = createRustEnv (configureRust pkgs.rust-bin.stable.latest);
         };
-      });
+      }
+    );
 }

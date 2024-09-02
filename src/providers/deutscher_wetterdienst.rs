@@ -145,9 +145,15 @@ fn find_closest_weather_station<'stations>(
     }
 }
 
-#[allow(clippy::case_sensitive_file_extension_comparisons)]
 fn is_measurement_file(file_name: &str) -> bool {
-    file_name.starts_with("produkt_zehn_now") && file_name.ends_with(".txt")
+    let file_path = std::path::Path::new(file_name);
+
+    file_name
+        .to_ascii_lowercase()
+        .starts_with("produkt_zehn_now")
+        && file_path
+            .extension()
+            .map_or(false, |ext| ext.eq_ignore_ascii_case("txt"))
 }
 
 fn read_measurement_data_zip(buf: &[u8]) -> anyhow::Result<String> {
