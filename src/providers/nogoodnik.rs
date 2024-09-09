@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Nogoodnik;
+pub struct Nogoodnik {}
 
 const SOURCE_URI: &str = "local.nogoodnik";
 
