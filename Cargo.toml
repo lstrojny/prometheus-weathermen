@@ -59,7 +59,7 @@ features = ["sync"]
 default-features = false
 
 [dependencies.once_cell]
-version = "1.19.0"
+version = "1.20.1"
 features = []
 default-features = false
 
