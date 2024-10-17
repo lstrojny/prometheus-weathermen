@@ -25,7 +25,7 @@ impl WeatherProvider for Nogoodnik {
         cache: &HttpRequestCache,
         _request: &WeatherRequest<Coordinates>,
     ) -> anyhow::Result<Weather> {
-        request_cached(&HttpCacheRequest::new_json_request(
+        request_cached::<()>(&HttpCacheRequest::new_json_request(
             SOURCE_URI,
             client,
             cache,
