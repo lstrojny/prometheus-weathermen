@@ -55,6 +55,7 @@
               rust-env
               cargo-unused-imports
               pkgs.cargo-release
+              pkgs.cargo-duplicates
               pkgs.darwin.apple_sdk.frameworks.Security
               pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
               pkgs.darwin.apple_sdk.frameworks.CoreServices
