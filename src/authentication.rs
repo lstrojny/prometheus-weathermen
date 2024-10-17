@@ -68,8 +68,8 @@ pub enum Denied {
 }
 
 pub fn maybe_authenticate(
-    maybe_credentials_store: &Option<CredentialsStore>,
-    maybe_credentials_presented: &Option<BasicAuth>,
+    maybe_credentials_store: Option<&CredentialsStore>,
+    maybe_credentials_presented: Option<&BasicAuth>,
 ) -> Result<Granted, Denied> {
     match (maybe_credentials_store, maybe_credentials_presented) {
         (Some(credentials_store), Some(credentials_presented)) => {
@@ -213,13 +213,13 @@ mod tests {
 
         #[test]
         fn false_if_no_authentication_required() {
-            assert_eq!(maybe_authenticate(&None, &None), Ok(Granted::NotRequired));
+            assert_eq!(maybe_authenticate(None, None), Ok(Granted::NotRequired));
         }
 
         #[test]
         fn unauthorized_if_no_auth_information_provided() {
             assert_eq!(
-                maybe_authenticate(&Some(CredentialsStore::default()), &None),
+                maybe_authenticate(Some(&CredentialsStore::default()), None),
                 Err(Denied::Unauthorized)
             );
         }
@@ -228,8 +228,8 @@ mod tests {
         fn forbidden_if_username_not_found() {
             assert_eq!(
                 maybe_authenticate(
-                    &Some(CredentialsStore::default()),
-                    &Some(BasicAuth {
+                    Some(&CredentialsStore::default()),
+                    Some(&BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into()
                     })
@@ -242,11 +242,11 @@ mod tests {
         fn forbidden_if_incorrect_password() {
             assert_eq!(
                 maybe_authenticate(
-                    &Some(CredentialsStore::from([(
+                    Some(&CredentialsStore::from([(
                         "joanna".into(),
                         SECRET_HASH.to_owned().into()
                     )])),
-                    &Some(BasicAuth {
+                    Some(&BasicAuth {
                         username: "joanna".into(),
                         password: "incorrect".into()
                     })
@@ -259,11 +259,11 @@ mod tests {
         fn forbidden_even_if_fakepassword() {
             assert_eq!(
                 maybe_authenticate(
-                    &Some(CredentialsStore::from([(
+                    Some(&CredentialsStore::from([(
                         "joanna".to_owned(),
                         SECRET_HASH.to_owned().into()
                     )])),
-                    &Some(BasicAuth {
+                    Some(&BasicAuth {
                         username: "joanna".into(),
                         password: "fakepassword".into()
                     })
@@ -276,11 +276,11 @@ mod tests {
         fn granted_if_authentication_successful() {
             assert_eq!(
                 maybe_authenticate(
-                    &Some(CredentialsStore::from([(
+                    Some(&CredentialsStore::from([(
                         "joanna".to_owned(),
                         SECRET_HASH.to_owned().into()
                     )])),
-                    &Some(BasicAuth {
+                    Some(&BasicAuth {
                         username: "joanna".into(),
                         password: "secret".into(),
                     }),
