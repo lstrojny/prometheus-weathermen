@@ -3,7 +3,7 @@ use crate::providers::units::{Celsius, Coordinate, Coordinates, Ratio};
 use crate::providers::{
     calculate_distance, HttpRequestCache, Weather, WeatherProvider, WeatherRequest,
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use chrono::Utc;
 use const_format::concatcp;
 use csv::Trim;
@@ -38,80 +38,61 @@ struct WeatherStation {
     longitude: Coordinate,
 }
 
-fn strip_duplicate_spaces(data: &str) -> String {
-    let mut prev_space = false;
-
-    data.chars()
-        .filter(|&c| {
-            let cur_space = c == ' ';
-
-            if cur_space && prev_space {
-                return false;
-            }
-
-            prev_space = cur_space;
-
-            true
-        })
-        .collect()
-}
-
-fn disambiguate_multi_words(data: &str) -> String {
-    data.split('\n')
+fn weather_station_format_to_csv(data: &str, delimiter: char) -> String {
+    data.split(['\n', '\r'])
         .enumerate()
-        .map(|(line_no, line)| {
-            if line_no == 0 || line_no == 1 {
-                line.to_owned()
-            } else {
-                disambiguate_multi_words_line(line)
-            }
+        .filter_map(|(line_no, line)| match line_no {
+            0 => Some(fix_weather_station_format_headline(line, delimiter)),
+            _ if line.is_empty() || line.starts_with('-') => None,
+            _ => Some(fix_weather_stations_format_line(line, delimiter)),
         })
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-#[derive(Copy, Clone)]
-enum Quote {
-    None,
-    Open,
-    Closed,
+fn fix_weather_station_format_headline(line: &str, delimiter: char) -> String {
+    line.replace(' ', &delimiter.to_string())
 }
 
-fn disambiguate_multi_words_line(orig_line: &str) -> String {
-    let mut orig_line_reversed = orig_line.trim().chars().rev().peekable();
-    let mut line = String::new();
-    let mut quote = Quote::None;
-    while let Some(cur_char) = orig_line_reversed.next() {
-        match (cur_char, orig_line_reversed.peek(), quote) {
-            (' ', Some(&next_char), Quote::None) if next_char != ' ' => {
-                line.push_str(" \"");
-                quote = Quote::Open;
+fn fix_weather_stations_format_line(line: &str, delimiter: char) -> String {
+    let mut numeric_column = true;
+    let mut chars = line.chars().peekable();
+    let mut fixed = String::new();
+
+    while let Some(cur) = chars.next() {
+        let next_space = chars.peek().is_some_and(|&c| c == ' ');
+
+        if cur == ' ' && (next_space || numeric_column) {
+            while chars.next_if_eq(&' ').is_some() {}
+
+            if chars.peek().is_some() {
+                fixed.push(delimiter);
             }
-            (' ', Some(&next_char), Quote::Open) if next_char.is_ascii_digit() => {
-                line.push('"');
-                line.push(cur_char);
-                quote = Quote::Closed;
-            }
-            _ => line.push(cur_char),
+            numeric_column = true;
+        } else {
+            numeric_column = numeric_column && cur.is_ascii_digit() || cur == '.';
+            fixed.push(cur);
         }
     }
-    line.chars().rev().collect()
+
+    fixed
 }
 
 fn parse_weather_station_list_csv(data: &str) -> anyhow::Result<Vec<WeatherStation>> {
-    let stripped = strip_duplicate_spaces(data);
-    let processed = disambiguate_multi_words(&stripped);
+    let delimiter = b'%';
+
+    let csv = weather_station_format_to_csv(data, delimiter.into());
 
     let reader = csv::ReaderBuilder::new()
-        .delimiter(b' ')
-        .comment(Some(b'-'))
+        .delimiter(delimiter)
         .trim(Trim::All)
         .flexible(true)
-        .from_reader(processed.as_bytes());
+        .from_reader(csv.as_bytes());
 
-    Ok(reader
+    reader
         .into_deserialize::<WeatherStation>()
-        .collect::<Result<_, _>>()?)
+        .collect::<Result<_, _>>()
+        .context("Failed to parse weather station list CSV file")
 }
 
 fn find_closest_weather_station<'stations>(
@@ -332,11 +313,11 @@ mod tests {
         #[test]
         fn parse_short_list() {
             assert_eq!(
-                parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
+                parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
-00044 20070209 20230111             44     52.7553    7.4815 Gro\u{df} Ber\u{df}en                             Niedersachsen                                                                                     \n\
-").expect("Parsing works"),
-                vec![WeatherStation {
+\
+00044 20070209 20230111             44     52.7553    7.4815 Gro\u{df} Ber\u{df}en                             Niedersachsen").expect("Parsing works"),
+                &[WeatherStation {
                     station_id: "00044".into(),
                     name: "Gro\u{df} Ber\u{df}en".into(),
                     latitude: 52.7553_f64.into(),
@@ -346,12 +327,40 @@ mod tests {
         }
 
         #[test]
+        fn parse_updated_csv_with_abgabe_column() {
+            assert_eq!(
+                parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland Abgabe
+----------- --------- --------- ------------- --------- --------- ----------------------------------------- ---------- ------
+00044 20070209 20241016             44     52.9336    8.2370 Gro\u{df}enkneten                     Niedersachsen                            Frei
+
+04189 20040801 20241017            534     48.1479    9.4596 Altheim, Kreis Biberach                  Baden-W\u{fc}rttemberg                        Frei
+").expect(
+                    "Parsing works"
+                ),
+                &[
+                    WeatherStation {
+                        station_id: "00044".into(),
+                        name: "Gro\u{df}enkneten".into(),
+                        latitude: 52.9336_f64.into(),
+                        longitude: 8.2370_f64.into(),
+                    },
+                    WeatherStation {
+                        station_id: "04189".into(),
+                        name: "Altheim, Kreis Biberach".into(),
+                        latitude: 48.1479_f64.into(),
+                        longitude: 9.4596_f64.into(),
+                    }
+                ]
+            );
+        }
+
+        #[test]
         fn parse_error() {
             assert!(
                 parse_weather_station_list_csv("Stations_id von_datum bis_datum Stationshoehe geoBreite geoLaenge Stationsname Bundesland\n\
 ----------- --------- --------- ------------- --------- --------- ----------------------------------------- ----------\n\
 broken\n\
-").expect_err("Will fail to parse").to_string().contains("CSV deserialize error: record 1"),
+").expect_err("Will fail to parse").to_string().contains("Failed to parse weather station list CSV file"),
             );
         }
     }
@@ -394,31 +403,6 @@ broken\n\
                     longitude: 11.5429_f64.into(),
                 }
             );
-        }
-    }
-
-    mod strip_duplicate_spaces {
-        use crate::providers::deutscher_wetterdienst::strip_duplicate_spaces;
-        use pretty_assertions::assert_str_eq;
-
-        #[test]
-        fn not_stripped_if_not_needed() {
-            assert_str_eq!(strip_duplicate_spaces("foo bar"), "foo bar");
-        }
-
-        #[test]
-        fn strips_two_spaces() {
-            assert_str_eq!(strip_duplicate_spaces("foo  bar"), "foo bar");
-        }
-
-        #[test]
-        fn strips_more_than_two_spaces() {
-            assert_str_eq!(strip_duplicate_spaces("foo   bar"), "foo bar");
-        }
-
-        #[test]
-        fn strips_multiple_occurrences() {
-            assert_str_eq!(strip_duplicate_spaces("foo   bar   baz "), "foo bar baz ");
         }
     }
 
