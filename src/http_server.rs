@@ -38,7 +38,7 @@ fn index(
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials_store, &credentials_presented) {
+    match maybe_authenticate(credentials_store.as_ref(), credentials_presented.as_ref()) {
         Ok(_) => Ok(MetricsResponse::new(
             Status::NotFound,
             get_metrics_format(accept),
@@ -55,7 +55,7 @@ async fn metrics(
     credentials_presented: Option<BasicAuth>,
     accept: &Accept,
 ) -> Result<MetricsResponse, Either<UnauthorizedResponse, ForbiddenResponse>> {
-    match maybe_authenticate(credentials_store, &credentials_presented) {
+    match maybe_authenticate(credentials_store.as_ref(), credentials_presented.as_ref()) {
         Ok(_) => Ok(serve_metrics(get_metrics_format(accept), unscheduled_tasks).await),
         Err(e) => auth_error_to_response(&e),
     }
