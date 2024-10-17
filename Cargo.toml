@@ -107,7 +107,7 @@ default-features = false
 pretty_assertions = "1.4.1"
 
 [target."cfg(target_os = \"linux\")".dependencies]
-systemd-journal-logger = "2.1.1"
+systemd-journal-logger = "2.2.0"
 
 [target."cfg(target_os = \"linux\")".dev-dependencies]
 
